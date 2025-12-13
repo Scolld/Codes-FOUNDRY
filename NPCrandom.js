@@ -200,7 +200,7 @@ const ImageManager = {
 };
 
 // ====================================================================
-// VI. GESTION DES ITEMS
+// VI. GESTION DES ITEMS (MODIFIÉ)
 // ====================================================================
 
 const ItemManager = {
@@ -250,42 +250,122 @@ const ItemManager = {
     },
     
     /**
-     * Génère l'équipement aléatoire
+     * Récupère le prix d'un item
      */
-    generateGear() {
+    getItemPrice(item) {
+        return item.system?.price || 0;
+    },
+    
+    /**
+     * Filtre les items par budget maximum
+     */
+    filterByBudget(items, maxBudget) {
+        return items.filter(item => this.getItemPrice(item) <= maxBudget);
+    },
+    
+    /**
+     * Sélectionne le meilleur item dans le budget
+     */
+    selectBestInBudget(items, budget) {
+        const affordable = this.filterByBudget(items, budget);
+        if (affordable.length === 0) return null;
+        
+        // Trie par prix décroissant et prend un des 3 meilleurs
+        affordable.sort((a, b) => this.getItemPrice(b) - this.getItemPrice(a));
+        const topChoices = affordable.slice(0, Math.min(3, affordable.length));
+        
+        return Utils.randomFrom(topChoices);
+    },
+    
+    /**
+     * Génère l'équipement avec budget
+     */
+    generateGearWithBudget(level) {
+        const totalBudget = 4000 * level;
+        let remainingBudget = totalBudget;
+        const gear = [];
+        const itemsToEquip = []; // Items qui doivent être équipés
+        
         const allItems = game.items.contents;
         
+        console.log(`Budget total pour niveau ${level}: ${totalBudget} crédits`);
+        
+        // Priorité 1: ARME
         const weapons = allItems.filter(i => i.type === "weapon");
-        const armors = allItems.filter(i => i.type === "equipment");
-        const consumables = allItems.filter(i => i.type === "consumable");
-        const tech = allItems.filter(i => i.type === "technological");
-
-        const gear = [];
-
-        // 1. Armure (garanti)
-        if (armors.length) {
-            gear.push(Utils.randomFrom(armors).toObject());
-        }
-
-        // 2. Consommable (garanti + 50% pour un second)
-        if (consumables.length) {
-            gear.push(Utils.randomFrom(consumables).toObject());
-            if (Math.random() < 0.5) {
-                gear.push(Utils.randomFrom(consumables).toObject());
+        if (weapons.length > 0) {
+            const weapon = this.selectBestInBudget(weapons, remainingBudget * 0.4); // Max 40% du budget
+            if (weapon) {
+                const weaponObj = weapon.toObject();
+                gear.push(weaponObj);
+                itemsToEquip.push({ name: weapon.name, type: "weapon" });
+                remainingBudget -= this.getItemPrice(weapon);
+                console.log(`Arme ajoutée: ${weapon.name} (${this.getItemPrice(weapon)} cr) - Reste: ${remainingBudget}`);
             }
         }
-
-        // 3. Technologie (garanti)
-        if (tech.length) {
-            gear.push(Utils.randomFrom(tech).toObject());
+        
+        // Priorité 2: CONSOMMABLE
+        const consumables = allItems.filter(i => i.type === "consumable");
+        if (consumables.length > 0) {
+            const consumable = this.selectBestInBudget(consumables, remainingBudget * 0.15); // Max 15% du budget restant
+            if (consumable) {
+                const consumableObj = consumable.toObject();
+                gear.push(consumableObj);
+                remainingBudget -= this.getItemPrice(consumable);
+                console.log(`Consommable ajouté: ${consumable.name} (${this.getItemPrice(consumable)} cr) - Reste: ${remainingBudget}`);
+            }
         }
         
-        // 4. Arme (75% de chance)
-        if (weapons.length && Math.random() < 0.75) {
-            gear.push(Utils.randomFrom(weapons).toObject());
+        // Priorité 3: TECHNOLOGIE
+        const tech = allItems.filter(i => i.type === "technological");
+        if (tech.length > 0) {
+            const techItem = this.selectBestInBudget(tech, remainingBudget * 0.2); // Max 20% du budget restant
+            if (techItem) {
+                const techObj = techItem.toObject();
+                gear.push(techObj);
+                remainingBudget -= this.getItemPrice(techItem);
+                console.log(`Tech ajouté: ${techItem.name} (${this.getItemPrice(techItem)} cr) - Reste: ${remainingBudget}`);
+            }
         }
-
-        return gear;
+        
+        // Priorité 4: ARMURE
+        const armors = allItems.filter(i => i.type === "equipment");
+        if (armors.length > 0) {
+            const armor = this.selectBestInBudget(armors, remainingBudget * 0.5); // Max 50% du budget restant
+            if (armor) {
+                const armorObj = armor.toObject();
+                gear.push(armorObj);
+                itemsToEquip.push({ name: armor.name, type: "equipment" });
+                remainingBudget -= this.getItemPrice(armor);
+                console.log(`Armure ajoutée: ${armor.name} (${this.getItemPrice(armor)} cr) - Reste: ${remainingBudget}`);
+            }
+        }
+        
+        // Priorité 5: DEUXIÈME ARME (si budget restant > 15%)
+        if (weapons.length > 0 && remainingBudget > totalBudget * 0.15) {
+            const weapon2 = this.selectBestInBudget(weapons, remainingBudget * 0.4);
+            if (weapon2) {
+                const weapon2Obj = weapon2.toObject();
+                gear.push(weapon2Obj);
+                remainingBudget -= this.getItemPrice(weapon2);
+                console.log(`Arme secondaire ajoutée: ${weapon2.name} (${this.getItemPrice(weapon2)} cr) - Reste: ${remainingBudget}`);
+            }
+        }
+        
+        // Priorité 6: DEUXIÈME CONSOMMABLE (si budget restant > 10%)
+        if (consumables.length > 0 && remainingBudget > totalBudget * 0.1) {
+            const consumable2 = this.selectBestInBudget(consumables, remainingBudget * 0.3);
+            if (consumable2) {
+                const consumable2Obj = consumable2.toObject();
+                gear.push(consumable2Obj);
+                remainingBudget -= this.getItemPrice(consumable2);
+                console.log(`Consommable secondaire ajouté: ${consumable2.name} (${this.getItemPrice(consumable2)} cr) - Reste: ${remainingBudget}`);
+            }
+        }
+        
+        console.log(`Équipement total: ${totalBudget - remainingBudget} cr`);
+        console.log(`Crédits restants: ${remainingBudget} cr`);
+        
+        return { gear, remainingBudget: Math.max(0, Math.floor(remainingBudget)), itemsToEquip };
     }
 };
 
@@ -487,7 +567,7 @@ const NarrativeManager = {
 };
 
 // ====================================================================
-// VIII. GESTION DES ACTEURS
+// VIII. GESTION DES ACTEURS (MODIFIÉ)
 // ====================================================================
 
 const ActorManager = {
@@ -546,6 +626,37 @@ const ActorManager = {
         if (gear.length > 0) {
             await actor.createEmbeddedDocuments("Item", gear);
         }
+    },
+    
+    /**
+     * Équipe automatiquement les items spécifiés
+     */
+    async equipItems(actor, itemsToEquip) {
+        // Attendre que les items soient bien créés
+        await Utils.delay(100);
+        
+        for (const itemInfo of itemsToEquip) {
+            // Chercher l'item dans l'inventaire de l'acteur par nom
+            const item = actor.items.find(i => i.name === itemInfo.name);
+            
+            if (item) {
+                try {
+                    // Équiper l'item
+                    await item.update({ "system.equipped": true });
+                    console.log(`Item équipé: ${item.name}`);
+                } catch (error) {
+                    console.warn(`Impossible d'équiper ${item.name}:`, error);
+                }
+            }
+        }
+    },
+    
+    /**
+     * Définit les crédits du personnage
+     */
+    async setCredits(actor, credits) {
+        await actor.update({ "system.currency.credit": credits });
+        console.log(`Crédits définis: ${credits}`);
     },
     
     /**
@@ -685,7 +796,7 @@ const NotificationManager = {
 };
 
 // ====================================================================
-// XI. ORCHESTRATEUR PRINCIPAL
+// XI. ORCHESTRATEUR PRINCIPAL (MODIFIÉ)
 // ====================================================================
 
 const NPCGenerator = {
@@ -741,17 +852,23 @@ const NPCGenerator = {
             const classObj = ItemManager.prepareClassItem(classItem, level);
             await ActorManager.addRaceAndClass(actor, raceItem, classObj);
 
-            // 6. Ajouter l'équipement
-            const gear = ItemManager.generateGear();
+            // 6. MODIFIÉ: Générer l'équipement avec budget
+            const { gear, remainingBudget, itemsToEquip } = ItemManager.generateGearWithBudget(level);
             await ActorManager.addGear(actor, gear);
+            
+            // 7. NOUVEAU: Équiper les items prioritaires
+            await ActorManager.equipItems(actor, itemsToEquip);
+            
+            // 8. NOUVEAU: Définir les crédits restants
+            await ActorManager.setCredits(actor, remainingBudget);
 
-            // 7. Mettre à jour les points de vie
+            // 9. Mettre à jour les points de vie
             await ActorManager.updateHealthPoints(actor);
 
-            // 8. NOUVEAU : Distribuer automatiquement les compétences
+            // 10. Distribuer automatiquement les compétences
             await SkillManager.autoDistributeSkills(actor, classItem, level);
 
-            // 9. Construire et mettre à jour la biographie
+            // 11. Construire et mettre à jour la biographie
             const biography = NarrativeManager.buildBiography(
                 narrativeData,
                 raceItem,
@@ -760,7 +877,7 @@ const NPCGenerator = {
             );
             await ActorManager.updateBiography(actor, biography);
 
-            // 10. Notifications
+            // 12. Notifications
             NotificationManager.success(narrativeData.name, level);
             NotificationManager.sendChatMessage(biography);
 
