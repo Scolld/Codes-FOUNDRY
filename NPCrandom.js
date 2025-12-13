@@ -1,5 +1,5 @@
 // ====================================================================
-// GÉNÉRATEUR DE PNJ DIVERSIFIÉ – VERSION STABLE (Dialog + Race/Classe/Image)
+// GÉNÉRATEUR DE PNJ DIVERSIFIÉ – VERSION STABLE (Dialog + Race/Classe/Image + Niveau)
 // ====================================================================
 
 // ====================================================================
@@ -132,7 +132,7 @@ async function getRandomImage(directory) {
 }
 
 // ====================================================================
-// V. DIALOG
+// V. DIALOG (MODIFIÉ)
 // ====================================================================
 
 async function showDialog() {
@@ -150,6 +150,9 @@ async function showDialog() {
 
     <label>Classe</label>
     <select id="class">${classes.map(o => `<option value="${o.id}">${o.name}</option>`)}</select>
+  
+    <label style="margin-top: 10px;">Niveau du PNJ (1-20)</label>
+    <input type="number" id="level" value="1" min="1" max="20" style="text-align: center;"/> 
   </form>`;
 
   return new Promise(resolve => {
@@ -162,7 +165,8 @@ async function showDialog() {
           callback: html => resolve({
             image: html.find("#img").val(),
             race: html.find("#race").val(),
-            class: html.find("#class").val()
+            class: html.find("#class").val(),
+            level: parseInt(html.find("#level").val()) || 1 // Récupère le niveau
           })
         },
         cancel: { label: "Annuler", callback: () => resolve(null) }
@@ -172,7 +176,7 @@ async function showDialog() {
 }
 
 // ====================================================================
-// VI. GÉNÉRATION (ORDRE CORRECT)
+// VI. GÉNÉRATION (ORDRE CORRECT - MODIFIÉ)
 // ====================================================================
 
 async function generateNPC() {
@@ -200,6 +204,8 @@ async function generateNPC() {
   const age = ageCategories[ageKey].label;
   const profileName = randomFrom(Object.keys(npcProfiles));
   const profile = npcProfiles[profileName];
+  
+  const level = selection.level; // <--- Nouveau: Récupération du niveau
 
   const attributes = await generateAttributes(profile, ageKey);
 
@@ -214,7 +220,7 @@ async function generateNPC() {
     <h3>${name}</h3>
     <p><strong>Profil :</strong> ${profileName}</p>
     <p><strong>Âge :</strong> ${age}</p>
-    <p><strong>Motivation :</strong> ${motivation}</p>
+    <p><strong>Niveau :</strong> ${level}</p>     <p><strong>Motivation :</strong> ${motivation}</p>
     <ul><li>${t1}</li><li>${t2}</li></ul>
   `;
 
@@ -224,12 +230,14 @@ async function generateNPC() {
     img: image,
     folder: folder?.id ?? null,
     system: {
-      details: { biography: { value: biography } },
+      details: { 
+        biography: { value: biography },
+        level: { value: level },
+      }, 
       ...attributes
     },
     prototypeToken: { name, texture: { src: image } }
   });
-
     const items = [];
   if (raceItem) items.push(raceItem.toObject());
   if (classItem) {
@@ -249,7 +257,6 @@ async function generateNPC() {
   // ------------------------------------------------------------
 
   const allItems = game.items.contents;
-console.log(allItems);
 
   const weapons = allItems.filter(i => i.type === "weapon");
   const armors = allItems.filter(i => i.type === "equipment");
