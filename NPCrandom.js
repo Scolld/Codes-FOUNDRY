@@ -230,10 +230,7 @@ async function generateNPC() {
     img: image,
     folder: folder?.id ?? null,
     system: {
-      details: { 
-        biography: { value: biography },
-        level: { value: level },
-      }, 
+      details: { biography: { value: biography } }, 
       ...attributes
     },
     prototypeToken: { name, texture: { src: image } }
@@ -250,6 +247,7 @@ async function generateNPC() {
     items.push(classObj);
 } 
   if (items.length) await actor.createEmbeddedDocuments("Item", items);
+
 
   // ------------------------------------------------------------
   // ÉQUIPEMENT ALÉATOIRE (APRÈS CRÉATION ACTEUR)
