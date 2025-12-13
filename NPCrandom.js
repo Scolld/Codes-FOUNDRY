@@ -151,7 +151,6 @@ async function showDialog() {
 
     const html = `
     <form>
-        <div style="display: grid; grid-template-columns: min-content; gap: 5px; padding: 5px;">
             <label style="font-weight: bold;">Image</label>
             <select id="img">${images.map(o => `<option value="${o.value}">${o.label}</option>`)}</select>
 
@@ -163,7 +162,6 @@ async function showDialog() {
         
             <label style="font-weight: bold; margin-top: 10px;">Niveau du PNJ (1-20)</label>
             <input type="number" id="level" value="1" min="1" max="20" style="text-align: center;"/> 
-        </div>
     </form>`;
 
     return new Promise(resolve => {
