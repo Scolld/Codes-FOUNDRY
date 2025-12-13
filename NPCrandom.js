@@ -232,7 +232,15 @@ async function generateNPC() {
 
     const items = [];
   if (raceItem) items.push(raceItem.toObject());
-  if (classItem) items.push(classItem.toObject());
+  if (classItem) {
+    classObj = classItem.toObject();
+    if (classObj.system && typeof classObj.system.levels !== 'undefined') {
+                classObj.system.levels = randomLevel;
+            } else if (classObj.system && typeof classObj.system.classLevel !== 'undefined') {
+                classObj.system.classLevel = randomLevel;
+            }
+    items.push(classObj);
+} 
   if (items.length) await actor.createEmbeddedDocuments("Item", items);
 
   // ------------------------------------------------------------
