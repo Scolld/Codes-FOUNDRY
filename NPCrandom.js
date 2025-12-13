@@ -4,7 +4,7 @@
 // ====================================================================
 
 // ====================================================================
-// I. CONFIGURATION
+// I. CONFIGURATION (MODIFIÉ)
 // ====================================================================
 
 const CONFIG_NPC = {
@@ -16,7 +16,20 @@ const CONFIG_NPC = {
     DEFAULT_IMAGE: "icons/svg/mystery-man.svg",
     LEVEL_MIN: 1,
     LEVEL_MAX: 20,
-    RECALC_DELAY_MS: 50
+    RECALC_DELAY_MS: 50,
+    COUNT_MIN: 1,
+    COUNT_MAX: 20,
+    RANDOM_LEVEL_VALUE: 0,
+    
+    // Mapping des noms de races vers les dossiers d'images
+    RACE_IMAGE_FOLDERS: {
+        "Elfe": "Elf",
+        "Ezi": "Ezi",
+        "Fova": "Fova",
+        "Humain": "Human",
+        "Nain": "Dwarf",
+        "Tan": "Tan"
+    }
 };
 
 // ====================================================================
@@ -98,7 +111,7 @@ const NARRATIVE_DATA = {
 };
 
 // ====================================================================
-// III. UTILITAIRES GÉNÉRIQUES
+// III. UTILITAIRES GÉNÉRIQUES (MODIFIÉ)
 // ====================================================================
 
 const Utils = {
@@ -121,6 +134,16 @@ const Utils = {
      */
     async delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    },
+    
+    /**
+     * Résout le niveau (aléatoire ou fixe)
+     */
+    resolveLevel(level) {
+        if (level === CONFIG_NPC.RANDOM_LEVEL_VALUE) {
+            return this.randomInteger(CONFIG_NPC.LEVEL_MIN, CONFIG_NPC.LEVEL_MAX);
+        }
+        return level;
     }
 };
 
@@ -148,12 +171,24 @@ const AttributeManager = {
 };
 
 // ====================================================================
-// V. GESTION DES IMAGES
+// V. GESTION DES IMAGES (MODIFIÉ)
 // ====================================================================
 
 const ImageManager = {
     /**
-     * Récupère les options d'images pour le sélecteur
+     * Récupère le dossier d'images pour une race donnée
+     */
+    getRaceFolderPath(raceName) {
+        if (!raceName) return CONFIG_NPC.IMAGE_DIRECTORY;
+        
+        const folderName = CONFIG_NPC.RACE_IMAGE_FOLDERS[raceName];
+        return folderName 
+            ? `${CONFIG_NPC.IMAGE_DIRECTORY}/${folderName}`
+            : CONFIG_NPC.IMAGE_DIRECTORY;
+    },
+    
+    /**
+     * Récupère les options d'images pour le sélecteur (pour une race spécifique)
      */
     async getImageOptions(directory) {
         const options = [
@@ -171,6 +206,7 @@ const ImageManager = {
                 }));
         } catch (e) {
             // Silencieux si le répertoire n'existe pas
+            console.warn(`Dossier d'images introuvable: ${directory}`);
         }
 
         return options;
@@ -185,16 +221,27 @@ const ImageManager = {
             const images = browse.files.filter(f => /\.(png|jpg|jpeg|webp|gif)$/i.test(f));
             return images.length ? Utils.randomFrom(images) : CONFIG_NPC.DEFAULT_IMAGE;
         } catch (e) {
+            console.warn(`Impossible de charger une image de: ${directory}`);
             return CONFIG_NPC.DEFAULT_IMAGE;
         }
     },
     
     /**
-     * Résout le choix d'image (random ou spécifique)
+     * Résout le choix d'image (random ou spécifique) pour une race donnée
      */
-    async resolveImage(selection, directory) {
+    async resolveImage(selection, raceItem) {
+        // Si la race est "random" ou "none", utiliser le dossier par défaut
+        if (!raceItem) {
+            return selection === "random" 
+                ? await this.getRandomImage(CONFIG_NPC.IMAGE_DIRECTORY)
+                : selection;
+        }
+        
+        // Récupérer le dossier spécifique à la race
+        const raceFolder = this.getRaceFolderPath(raceItem.name);
+        
         return selection === "random" 
-            ? await this.getRandomImage(directory)
+            ? await this.getRandomImage(raceFolder)
             : selection;
     }
 };
@@ -688,29 +735,31 @@ const ActorManager = {
 };
 
 // ====================================================================
-// IX. GESTION DE LA POPUP
+// IX. GESTION DU DIALOGUE (MODIFIÉ AVEC LOGIQUE DYNAMIQUE)
 // ====================================================================
 
 const DialogManager = {
     /**
-     * Affiche le popup de sélection
+     * Affiche le dialogue de sélection
      */
     async showDialog() {
-        const images = await ImageManager.getImageOptions(CONFIG_NPC.IMAGE_DIRECTORY);
         const races = ItemManager.getItemOptions(CONFIG_NPC.RACE_ITEM_TYPE);
         const classes = ItemManager.getItemOptions(CONFIG_NPC.CLASS_ITEM_TYPE);
+        
+        // Charger les images du dossier par défaut au début
+        const defaultImages = await ImageManager.getImageOptions(CONFIG_NPC.IMAGE_DIRECTORY);
 
         const html = `
         <form>
             <div style="display: grid; grid-template-columns: 1fr; gap: 10px; padding: 5px;">
-                <label style="font-weight: bold;">Image</label>
-                <select id="img">${images.map(o => 
-                    `<option value="${o.value}">${o.label}</option>`
-                ).join('')}</select>
-
                 <label style="font-weight: bold;">Race</label>
                 <select id="race">${races.map(o => 
                     `<option value="${o.id}">${o.name}</option>`
+                ).join('')}</select>
+
+                <label style="font-weight: bold;">Image</label>
+                <select id="img">${defaultImages.map(o => 
+                    `<option value="${o.value}">${o.label}</option>`
                 ).join('')}</select>
 
                 <label style="font-weight: bold;">Classe</label>
@@ -719,12 +768,24 @@ const DialogManager = {
                 ).join('')}</select>
             
                 <label style="font-weight: bold; margin-top: 10px;">
-                    Niveau du PNJ (${CONFIG_NPC.LEVEL_MIN}-${CONFIG_NPC.LEVEL_MAX})
+                    Niveau du PNJ
                 </label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="checkbox" id="randomLevel" style="width: auto;">
+                    <label for="randomLevel" style="margin: 0; font-weight: normal;">Aléatoire (${CONFIG_NPC.LEVEL_MIN}-${CONFIG_NPC.LEVEL_MAX})</label>
+                </div>
                 <input type="number" id="level" value="1" 
                        min="${CONFIG_NPC.LEVEL_MIN}" 
                        max="${CONFIG_NPC.LEVEL_MAX}" 
-                       style="text-align: center;"/> 
+                       style="text-align: center;"/>
+                
+                <label style="font-weight: bold; margin-top: 10px;">
+                    Nombre de PNJ à créer (${CONFIG_NPC.COUNT_MIN}-${CONFIG_NPC.COUNT_MAX})
+                </label>
+                <input type="number" id="count" value="1" 
+                       min="${CONFIG_NPC.COUNT_MIN}" 
+                       max="${CONFIG_NPC.COUNT_MAX}" 
+                       style="text-align: center;"/>
             </div>
         </form>`;
 
@@ -736,12 +797,20 @@ const DialogManager = {
                     generate: {
                         label: "Générer",
                         icon: '<i class="fas fa-magic"></i>',
-                        callback: html => resolve({
-                            image: html.find("#img").val(),
-                            race: html.find("#race").val(),
-                            class: html.find("#class").val(),
-                            level: parseInt(html.find("#level").val()) || 1
-                        })
+                        callback: html => {
+                            const randomLevel = html.find("#randomLevel").is(":checked");
+                            const level = randomLevel 
+                                ? CONFIG_NPC.RANDOM_LEVEL_VALUE 
+                                : (parseInt(html.find("#level").val()) || 1);
+                            
+                            resolve({
+                                image: html.find("#img").val(),
+                                race: html.find("#race").val(),
+                                class: html.find("#class").val(),
+                                level: level,
+                                count: parseInt(html.find("#count").val()) || 1
+                            });
+                        }
                     },
                     cancel: {
                         label: "Annuler",
@@ -750,22 +819,84 @@ const DialogManager = {
                     }
                 },
                 default: "generate",
-                close: () => resolve(null)
+                close: () => resolve(null),
+                render: async html => {
+                    const raceSelect = html.find("#race");
+                    const imageSelect = html.find("#img");
+                    const checkbox = html.find("#randomLevel");
+                    const levelInput = html.find("#level");
+                    
+                    // Gestion du niveau aléatoire
+                    checkbox.on("change", function() {
+                        if (this.checked) {
+                            levelInput.prop("disabled", true).css("opacity", "0.5");
+                        } else {
+                            levelInput.prop("disabled", false).css("opacity", "1");
+                        }
+                    });
+                    
+                    // Gestion du changement de race
+                    raceSelect.on("change", async function() {
+                        const selectedRaceId = this.value;
+                        
+                        // Si "random" ou "none"
+                        if (selectedRaceId === "random" || selectedRaceId === "none") {
+                            imageSelect.val("random");
+                            imageSelect.prop("disabled", true).css("opacity", "0.5");
+                            return;
+                        }
+                        
+                        // Récupérer l'item de race
+                        const raceItem = game.items.get(selectedRaceId);
+                        if (!raceItem) {
+                            imageSelect.prop("disabled", false).css("opacity", "1");
+                            return;
+                        }
+                        
+                        // Récupérer le dossier spécifique à la race
+                        const raceFolder = ImageManager.getRaceFolderPath(raceItem.name);
+                        
+                        // Charger les nouvelles options d'images
+                        const raceImages = await ImageManager.getImageOptions(raceFolder);
+                        
+                        // Mettre à jour le sélecteur d'images
+                        imageSelect.empty();
+                        raceImages.forEach(img => {
+                            imageSelect.append(`<option value="${img.value}">${img.label}</option>`);
+                        });
+                        
+                        // Réactiver et sélectionner "random" par défaut
+                        imageSelect.val("random");
+                        imageSelect.prop("disabled", false).css("opacity", "1");
+                        
+                        console.log(`Race changée: ${raceItem.name} -> Dossier: ${raceFolder}`);
+                    });
+                    
+                    // Trigger initial pour la race par défaut
+                    raceSelect.trigger("change");
+                }
             }).render(true);
         });
     }
 };
 
 // ====================================================================
-// X. GESTION DES NOTIFICATIONS
+// X. GESTION DES NOTIFICATIONS (MODIFIÉ)
 // ====================================================================
 
 const NotificationManager = {
     /**
-     * Affiche une notification de succès
+     * Affiche une notification de succès pour un PNJ
      */
     success(name, level) {
         ui.notifications.info(`✅ PNJ **${name}** (Niv. ${level}) créé avec succès.`);
+    },
+    
+    /**
+     * Affiche une notification de succès pour plusieurs PNJ
+     */
+    batchSuccess(count, totalCount) {
+        ui.notifications.info(`✅ ${count}/${totalCount} PNJ créés avec succès.`);
     },
     
     /**
@@ -792,6 +923,28 @@ const NotificationManager = {
             content: biography,
             whisper: [game.user.id]
         });
+    },
+    
+    /**
+     * Envoie un message récapitulatif pour plusieurs PNJ
+     */
+    sendBatchSummary(npcList) {
+        const content = `
+            <h3>📋 Récapitulatif de génération</h3>
+            <p><strong>${npcList.length} PNJ créés :</strong></p>
+            <ul>
+                ${npcList.map(npc => 
+                    `<li>${npc.name} (${npc.raceName}, Niv. ${npc.level}) - ${npc.className || 'Sans classe'}</li>`
+                ).join('')}
+            </ul>
+        `;
+        
+        ChatMessage.create({
+            user: game.user.id,
+            speaker: { alias: "Générateur PNJ" },
+            content: content,
+            whisper: [game.user.id]
+        });
     }
 };
 
@@ -801,7 +954,92 @@ const NotificationManager = {
 
 const NPCGenerator = {
     /**
-     * Point d'entrée principal
+     * Génère un seul PNJ
+     */
+    async generateSingle(selection) {
+        // 1. Résoudre le niveau (aléatoire ou fixe)
+        const level = Utils.resolveLevel(selection.level);
+        
+        console.log(`Niveau résolu: ${level} (original: ${selection.level})`);
+        
+        // 2. Résoudre la race AVANT l'image
+        const raceItem = ItemManager.resolveItem(
+            selection.race, 
+            CONFIG_NPC.RACE_ITEM_TYPE
+        );
+        
+        // 3. Résoudre l'image en fonction de la race
+        const image = await ImageManager.resolveImage(
+            selection.image,
+            raceItem
+        );
+        
+        console.log(`Race: ${raceItem?.name || "Aucune"} -> Image: ${image}`);
+        
+        // 4. Résoudre la classe
+        const classItem = ItemManager.resolveItem(
+            selection.class, 
+            CONFIG_NPC.CLASS_ITEM_TYPE
+        );
+
+        // 5. Générer les données (NOUVELLES à chaque appel)
+        const narrativeData = NarrativeManager.generateNarrativeData();
+        const attributes = await AttributeManager.rollAttributes();
+        const folder = ActorManager.findFolder(CONFIG_NPC.ACTOR_FOLDER_NAME);
+
+        // 6. Créer l'acteur de base
+        const actor = await ActorManager.createBaseActor(
+            narrativeData.name,
+            image,
+            attributes,
+            folder
+        );
+
+        if (!actor) {
+            throw new Error("Échec de la création de l'acteur.");
+        }
+
+        // 7. Ajouter race et classe
+        const classObj = ItemManager.prepareClassItem(classItem, level);
+        await ActorManager.addRaceAndClass(actor, raceItem, classObj);
+
+        // 8. Générer l'équipement avec budget
+        const { gear, remainingBudget, itemsToEquip } = ItemManager.generateGearWithBudget(level);
+        await ActorManager.addGear(actor, gear);
+        
+        // 9. Équiper les items prioritaires
+        await ActorManager.equipItems(actor, itemsToEquip);
+        
+        // 10. Définir les crédits restants
+        await ActorManager.setCredits(actor, remainingBudget);
+
+        // 11. Mettre à jour les points de vie
+        await ActorManager.updateHealthPoints(actor);
+
+        // 12. Distribuer automatiquement les compétences
+        await SkillManager.autoDistributeSkills(actor, classItem, level);
+
+        // 13. Construire et mettre à jour la biographie
+        const biography = NarrativeManager.buildBiography(
+            narrativeData,
+            raceItem,
+            classItem,
+            level
+        );
+        await ActorManager.updateBiography(actor, biography);
+
+        // Retourner les infos du PNJ créé
+        return {
+            name: narrativeData.name,
+            level: level,
+            raceName: raceItem?.name || "Sans race",
+            className: classItem?.name || null,
+            biography: biography
+        };
+    },
+    
+    /**
+     * Point d'entrée principal - gère la création unique ou multiple
      */
     async generate() {
         // 1. Afficher le dialogue
@@ -811,78 +1049,47 @@ const NPCGenerator = {
             return;
         }
 
+        const count = Math.min(Math.max(selection.count, CONFIG_NPC.COUNT_MIN), CONFIG_NPC.COUNT_MAX);
+        const isRandomLevel = selection.level === CONFIG_NPC.RANDOM_LEVEL_VALUE;
+        
+        console.log(`Génération de ${count} PNJ(s) - Niveau: ${isRandomLevel ? 'Aléatoire' : selection.level}`);
+        
         try {
-            // 2. Résoudre les sélections
-            const image = await ImageManager.resolveImage(
-                selection.image, 
-                CONFIG_NPC.IMAGE_DIRECTORY
-            );
+            const createdNPCs = [];
             
-            const raceItem = ItemManager.resolveItem(
-                selection.race, 
-                CONFIG_NPC.RACE_ITEM_TYPE
-            );
+            // Boucle de création
+            for (let i = 0; i < count; i++) {
+                console.log(`\n=== Création du PNJ ${i + 1}/${count} ===`);
+                
+                try {
+                    const npcInfo = await this.generateSingle(selection);
+                    createdNPCs.push(npcInfo);
+                    
+                    // Notification individuelle uniquement si un seul PNJ
+                    if (count === 1) {
+                        NotificationManager.success(npcInfo.name, npcInfo.level);
+                        NotificationManager.sendChatMessage(npcInfo.biography);
+                    }
+                    
+                    // Petit délai entre chaque création pour éviter les problèmes
+                    if (i < count - 1) {
+                        await Utils.delay(200);
+                    }
+                    
+                } catch (error) {
+                    console.error(`Erreur lors de la création du PNJ ${i + 1}:`, error);
+                    NotificationManager.error(`Erreur PNJ ${i + 1}: ${error.message}`);
+                }
+            }
             
-            const classItem = ItemManager.resolveItem(
-                selection.class, 
-                CONFIG_NPC.CLASS_ITEM_TYPE
-            );
-            
-            const level = selection.level;
-
-            // 3. Générer les données
-            const narrativeData = NarrativeManager.generateNarrativeData();
-            const attributes = await AttributeManager.rollAttributes();
-            const folder = ActorManager.findFolder(CONFIG_NPC.ACTOR_FOLDER_NAME);
-
-            // 4. Créer l'acteur de base
-            const actor = await ActorManager.createBaseActor(
-                narrativeData.name,
-                image,
-                attributes,
-                folder
-            );
-
-            if (!actor) {
-                NotificationManager.error("Échec de la création de l'acteur.");
-                return;
+            // Si plusieurs PNJ, notification groupée
+            if (count > 1) {
+                NotificationManager.batchSuccess(createdNPCs.length, count);
+                NotificationManager.sendBatchSummary(createdNPCs);
             }
 
-            // 5. Ajouter race et classe
-            const classObj = ItemManager.prepareClassItem(classItem, level);
-            await ActorManager.addRaceAndClass(actor, raceItem, classObj);
-
-            // 6. MODIFIÉ: Générer l'équipement avec budget
-            const { gear, remainingBudget, itemsToEquip } = ItemManager.generateGearWithBudget(level);
-            await ActorManager.addGear(actor, gear);
-            
-            // 7. NOUVEAU: Équiper les items prioritaires
-            await ActorManager.equipItems(actor, itemsToEquip);
-            
-            // 8. NOUVEAU: Définir les crédits restants
-            await ActorManager.setCredits(actor, remainingBudget);
-
-            // 9. Mettre à jour les points de vie
-            await ActorManager.updateHealthPoints(actor);
-
-            // 10. Distribuer automatiquement les compétences
-            await SkillManager.autoDistributeSkills(actor, classItem, level);
-
-            // 11. Construire et mettre à jour la biographie
-            const biography = NarrativeManager.buildBiography(
-                narrativeData,
-                raceItem,
-                classItem,
-                level
-            );
-            await ActorManager.updateBiography(actor, biography);
-
-            // 12. Notifications
-            NotificationManager.success(narrativeData.name, level);
-            NotificationManager.sendChatMessage(biography);
-
         } catch (error) {
-            console.error("Erreur lors de la génération du PNJ:", error);
+            console.error("Erreur lors de la génération des PNJ:", error);
             NotificationManager.error(`Erreur: ${error.message}`);
         }
     }
