@@ -290,6 +290,150 @@ const ItemManager = {
 };
 
 // ====================================================================
+// AJOUT : GESTION DES COMPÉTENCES
+// ====================================================================
+
+const SkillManager = {
+    /**
+     * Récupère le nombre de points de compétence par niveau de la classe
+     */
+    getSkillPointsPerLevel(classItem) {
+        if (!classItem) return 0;
+        
+        // Dans SFRpg, c'est généralement dans system.skillRanks ou system.skillsPerLevel
+        return classItem.system?.skillRanks?.value || 
+               classItem.system?.skillsPerLevel || 
+               4; // Valeur par défaut si non trouvée
+    },
+    
+    /**
+     * Calcule le total de points de compétence disponibles
+     */
+    calculateTotalSkillPoints(classItem, level) {
+        const pointsPerLevel = this.getSkillPointsPerLevel(classItem);
+        return pointsPerLevel * level;
+    },
+    
+    /**
+     * Récupère les compétences autorisées pour la classe
+     */
+    getClassSkills(actor, classItem) {
+        if (!classItem) return [];
+        
+        const allSkills = actor.system?.skills || {};
+        const classSkills = classItem.system?.csk || {}; // Class skills
+        
+        // Filtre les compétences qui sont des class skills
+        const allowedSkillKeys = Object.keys(allSkills).filter(skillKey => {
+            // Vérifie si c'est une class skill
+            return classSkills[skillKey] === true || 
+                   allSkills[skillKey]?.isClassSkill === true;
+        });
+        
+        // Si aucune class skill n'est définie, on prend toutes les compétences
+        return allowedSkillKeys.length > 0 
+            ? allowedSkillKeys 
+            : Object.keys(allSkills);
+    },
+    
+    /**
+     * Distribue aléatoirement les points de compétence
+     */
+    distributeSkillPoints(allowedSkills, totalPoints, maxPerSkill) {
+        const distribution = {};
+        
+        // Initialiser toutes les compétences à 0
+        allowedSkills.forEach(skill => distribution[skill] = 0);
+        
+        let remainingPoints = totalPoints;
+        
+        // Distribuer les points tant qu'il en reste
+        while (remainingPoints > 0 && allowedSkills.length > 0) {
+            // Choisir une compétence aléatoire
+            const skillIndex = Math.floor(Math.random() * allowedSkills.length);
+            const skill = allowedSkills[skillIndex];
+            
+            // Calculer combien de points on peut encore ajouter
+            const currentPoints = distribution[skill];
+            const maxAdditional = Math.min(
+                maxPerSkill - currentPoints,  // Ne pas dépasser le max
+                remainingPoints                // Ne pas dépasser les points restants
+            );
+            
+            if (maxAdditional > 0) {
+                // Ajouter un point aléatoire entre 1 et maxAdditional
+                const pointsToAdd = Math.floor(Math.random() * maxAdditional) + 1;
+                distribution[skill] += pointsToAdd;
+                remainingPoints -= pointsToAdd;
+            }
+            
+            // Si cette compétence est au max, la retirer des options
+            if (distribution[skill] >= maxPerSkill) {
+                allowedSkills.splice(skillIndex, 1);
+            }
+        }
+        
+        return distribution;
+    },
+    
+    /**
+     * Applique la distribution de compétences à l'acteur
+     */
+    async applySkillDistribution(actor, distribution) {
+        const updates = {};
+        
+        Object.entries(distribution).forEach(([skillKey, points]) => {
+            if (points > 0) {
+                updates[`system.skills.${skillKey}.ranks`] = points;
+            }
+        });
+        
+        if (Object.keys(updates).length > 0) {
+            await actor.update(updates);
+        }
+    },
+    
+    /**
+     * Distribue automatiquement les compétences pour un acteur
+     */
+    async autoDistributeSkills(actor, classItem, level) {
+        if (!classItem || level < 1) {
+            console.log("Pas de classe ou niveau invalide, aucune compétence distribuée.");
+            return;
+        }
+        
+        // 1. Calculer le total de points
+        const totalPoints = this.calculateTotalSkillPoints(classItem, level);
+        
+        if (totalPoints === 0) {
+            console.log("Aucun point de compétence à distribuer.");
+            return;
+        }
+        
+        // 2. Récupérer les compétences autorisées
+        const allowedSkills = this.getClassSkills(actor, classItem);
+        
+        if (allowedSkills.length === 0) {
+            console.log("Aucune compétence disponible.");
+            return;
+        }
+        
+        // 3. Distribuer les points (max = niveau du personnage)
+        const distribution = this.distributeSkillPoints(
+            [...allowedSkills], // Copie pour ne pas modifier l'original
+            totalPoints,
+            level // Max par compétence = niveau
+        );
+        
+        // 4. Appliquer la distribution
+        await this.applySkillDistribution(actor, distribution);
+        
+        console.log(`Distribution des compétences pour ${actor.name}:`, distribution);
+        console.log(`Points distribués: ${Object.values(distribution).reduce((a, b) => a + b, 0)}/${totalPoints}`);
+    }
+};
+
+// ====================================================================
 // VII. GESTION DE LA NARRATION
 // ====================================================================
 
@@ -604,7 +748,10 @@ const NPCGenerator = {
             // 7. Mettre à jour les points de vie
             await ActorManager.updateHealthPoints(actor);
 
-            // 8. Construire et mettre à jour la biographie
+            // 8. NOUVEAU : Distribuer automatiquement les compétences
+            await SkillManager.autoDistributeSkills(actor, classItem, level);
+
+            // 9. Construire et mettre à jour la biographie
             const biography = NarrativeManager.buildBiography(
                 narrativeData,
                 raceItem,
@@ -613,7 +760,7 @@ const NPCGenerator = {
             );
             await ActorManager.updateBiography(actor, biography);
 
-            // 9. Notifications
+            // 10. Notifications
             NotificationManager.success(narrativeData.name, level);
             NotificationManager.sendChatMessage(biography);
 
