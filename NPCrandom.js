@@ -151,17 +151,24 @@ async function showDialog() {
 
     const html = `
     <form>
-            <label style="font-weight: bold;">Image</label>
-            <select id="img">${images.map(o => `<option value="${o.value}">${o.label}</option>`)}</select>
-
-            <label style="font-weight: bold;">Race</label>
-            <select id="race">${races.map(o => `<option value="${o.id}">${o.name}</option>`)}</select>
-
-            <label style="font-weight: bold;">Classe</label>
-            <select id="class">${classes.map(o => `<option value="${o.id}">${o.name}</option>`)}</select>
-        
-            <label style="font-weight: bold; margin-top: 10px;">Niveau du PNJ (1-20)</label>
-            <input type="number" id="level" value="1" min="1" max="20" style="text-align: center;"/> 
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-weight: bold;">Image</label>
+                <select id="img">${images.map(o => `<option value="${o.value}">${o.label}</option>`)}</select>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-weight: bold;">Race</label>
+                <select id="race">${races.map(o => `<option value="${o.id}">${o.name}</option>`)}</select>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-weight: bold;">Classe</label>
+                <select id="class">${classes.map(o => `<option value="${o.id}">${o.name}</option>`)}</select>
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-weight: bold; margin-top: 10px;">Niveau du PNJ (1-20)</label>
+                <input type="number" id="level" value="1" min="1" max="20" style="text-align: center;"/> 
+            </div>
+        </div>
     </form>`;
 
     return new Promise(resolve => {
