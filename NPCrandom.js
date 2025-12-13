@@ -151,7 +151,7 @@ async function showDialog() {
 
     const html = `
     <form>
-        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; padding: 5px;">
+        <div style="display: grid; grid-template-columns: min-content; gap: 5px; padding: 5px;">
             <label style="font-weight: bold;">Image</label>
             <select id="img">${images.map(o => `<option value="${o.value}">${o.label}</option>`)}</select>
 
