@@ -272,6 +272,7 @@ export class QuestManagerApp extends Application {
     // Actions globales
     html.find('#add-quest-btn').click(this._onAddQuest.bind(this));
     html.find('#refresh-btn').click(this._onRefresh.bind(this));
+    html.find('#permissions-btn').click(this._onOpenPermissions.bind(this));
     html.find('#export-btn').click(this._onExport.bind(this));
     html.find('#import-btn').click(this._onImport.bind(this));
     
@@ -371,6 +372,16 @@ export class QuestManagerApp extends Application {
   _onRefresh(event) {
     event.preventDefault();
     this.render(false);
+  }
+
+  /**
+ * Handler: Ouvrir la configuration des permissions
+ */
+  async _onOpenPermissions(event) {
+    event.preventDefault();
+    
+    const { PermissionsConfigApp } = await import('./permissions-config.js');
+    new PermissionsConfigApp().render(true);
   }
 
   /**

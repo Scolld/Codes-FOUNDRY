@@ -1,0 +1,288 @@
+<form class="permissions-config-content" autocomplete="off">
+  <!-- En-tête avec statistiques -->
+  <header class="permissions-header">
+    <div class="permissions-stats">
+      <span class="stat">
+        <i class="fas fa-users"></i> {{stats.totalPlayers}} joueur(s)
+      </span>
+      <span class="stat">
+        <i class="fas fa-circle" style="color: #7ed321;"></i> {{stats.activePlayers}} en ligne
+      </span>
+      <span class="stat">
+        <i class="fas fa-user-cog"></i> {{stats.playersWithCustomPerms}} avec permissions custom
+      </span>
+    </div>
+  </header>
+
+  <!-- Onglets -->
+  <nav class="tabs">
+    <a class="item active" data-tab="users">
+      <i class="fas fa-users"></i> Joueurs
+    </a>
+    <a class="item" data-tab="defaults">
+      <i class="fas fa-cog"></i> Par défaut
+    </a>
+    <a class="item" data-tab="presets">
+      <i class="fas fa-magic"></i> Presets
+    </a>
+  </nav>
+
+  <!-- Contenu des onglets -->
+  <section class="tab-content">
+    
+    <!-- Onglet: Joueurs -->
+    <div class="tab" data-tab="users">
+      <div class="permissions-help">
+        <i class="fas fa-info-circle"></i>
+        <p>Configurez les permissions individuelles pour chaque joueur. Les valeurs non définies utilisent les permissions par défaut.</p>
+      </div>
+
+      {{#if players.length}}
+        <div class="users-permissions-list">
+          {{#each players}}
+            <div class="user-permissions-row {{#if hasCustomPermissions}}has-custom{{/if}}">
+              <div class="user-info">
+                <div class="user-avatar" style="background-color: {{color}};">
+                  {{#if active}}
+                    <i class="fas fa-user" title="En ligne"></i>
+                  {{else}}
+                    <i class="fas fa-user-slash" title="Hors ligne"></i>
+                  {{/if}}
+                </div>
+                <div class="user-details">
+                  <strong>{{name}}</strong>
+                  {{#if hasCustomPermissions}}
+                    <span class="custom-badge">Custom</span>
+                  {{/if}}
+                </div>
+              </div>
+
+              <div class="user-permissions-grid">
+                {{#each ../permissionTypes}}
+                  <label class="permission-checkbox">
+                    <input 
+                      type="checkbox" 
+                      class="user-permission"
+                      data-user-id="{{../id}}"
+                      data-permission="{{key}}"
+                      {{#if (lookup ../permissions key)}}checked{{/if}}
+                    >
+                    <span>{{label}}</span>
+                  </label>
+                {{/each}}
+              </div>
+
+              <div class="user-actions">
+                <button 
+                  type="button" 
+                  class="grant-all-user action-btn-small success"
+                  data-user-id="{{id}}"
+                  title="Tout autoriser"
+                >
+                  <i class="fas fa-check-double"></i>
+                </button>
+                <button 
+                  type="button" 
+                  class="deny-all-user action-btn-small danger"
+                  data-user-id="{{id}}"
+                  title="Tout interdire"
+                >
+                  <i class="fas fa-ban"></i>
+                </button>
+                <button 
+                  type="button" 
+                  class="reset-user-permissions action-btn-small"
+                  data-user-id="{{id}}"
+                  title="Réinitialiser"
+                >
+                  <i class="fas fa-undo"></i>
+                </button>
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      {{else}}
+        <div class="empty-state">
+          <i class="fas fa-users-slash"></i>
+          <p>Aucun joueur (non-GM) trouvé dans le monde</p>
+        </div>
+      {{/if}}
+    </div>
+
+    <!-- Onglet: Permissions par défaut -->
+    <div class="tab" data-tab="defaults">
+      <div class="permissions-help">
+        <i class="fas fa-info-circle"></i>
+        <p>Ces permissions s'appliquent à tous les joueurs qui n'ont pas de permissions personnalisées.</p>
+      </div>
+
+      <div class="default-permissions-section">
+        <h3>Permissions par défaut</h3>
+        
+        <div class="permissions-grid">
+          {{#each permissionTypes}}
+            <label class="permission-checkbox large">
+              <input 
+                type="checkbox" 
+                class="default-permission"
+                data-permission="{{key}}"
+                {{#if (lookup ../defaultPermissions key)}}checked{{/if}}
+              >
+              <div class="permission-info">
+                <strong>{{label}}</strong>
+                <span class="permission-desc">{{lookup ../permissionDescriptions key}}</span>
+              </div>
+            </label>
+          {{/each}}
+        </div>
+
+        <div class="default-actions">
+          <button type="button" id="apply-defaults-to-all" class="action-btn warning">
+            <i class="fas fa-exclamation-triangle"></i> Appliquer à tous les joueurs
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Onglet: Presets -->
+    <div class="tab" data-tab="presets">
+      <div class="permissions-help">
+        <i class="fas fa-info-circle"></i>
+        <p>Appliquez rapidement des configurations prédéfinies de permissions.</p>
+      </div>
+
+      <div class="presets-section">
+        <h3>Presets disponibles</h3>
+
+        <div class="presets-grid">
+          <div class="preset-card">
+            <div class="preset-header">
+              <i class="fas fa-eye"></i>
+              <h4>Lecture seule</h4>
+            </div>
+            <div class="preset-description">
+              Les joueurs peuvent uniquement voir les quêtes, sans aucune action.
+            </div>
+            <div class="preset-permissions">
+              <span class="perm-badge granted">Voir</span>
+            </div>
+            <button 
+              type="button" 
+              class="apply-preset action-btn"
+              data-preset="view-only"
+              data-target="default"
+            >
+              Appliquer par défaut
+            </button>
+          </div>
+
+          <div class="preset-card">
+            <div class="preset-header">
+              <i class="fas fa-user"></i>
+              <h4>Joueur standard</h4>
+            </div>
+            <div class="preset-description">
+              Les joueurs peuvent voir et changer le statut des quêtes.
+            </div>
+            <div class="preset-permissions">
+              <span class="perm-badge granted">Voir</span>
+              <span class="perm-badge granted">Changer statut</span>
+            </div>
+            <button 
+              type="button" 
+              class="apply-preset action-btn"
+              data-preset="player"
+              data-target="default"
+            >
+              Appliquer par défaut
+            </button>
+          </div>
+
+          <div class="preset-card">
+            <div class="preset-header">
+              <i class="fas fa-user-plus"></i>
+              <h4>Contributeur</h4>
+            </div>
+            <div class="preset-description">
+              Les joueurs peuvent ajouter des quêtes et changer les statuts.
+            </div>
+            <div class="preset-permissions">
+              <span class="perm-badge granted">Voir</span>
+              <span class="perm-badge granted">Ajouter</span>
+              <span class="perm-badge granted">Changer statut</span>
+            </div>
+            <button 
+              type="button" 
+              class="apply-preset action-btn"
+              data-preset="contributor"
+              data-target="default"
+            >
+              Appliquer par défaut
+            </button>
+          </div>
+
+          <div class="preset-card">
+            <div class="preset-header">
+              <i class="fas fa-user-edit"></i>
+              <h4>Éditeur</h4>
+            </div>
+            <div class="preset-description">
+              Les joueurs peuvent tout faire sauf supprimer des quêtes.
+            </div>
+            <div class="preset-permissions">
+              <span class="perm-badge granted">Voir</span>
+              <span class="perm-badge granted">Ajouter</span>
+              <span class="perm-badge granted">Modifier</span>
+              <span class="perm-badge granted">Changer statut</span>
+            </div>
+            <button 
+              type="button" 
+              class="apply-preset action-btn"
+              data-preset="editor"
+              data-target="default"
+            >
+              Appliquer par défaut
+            </button>
+          </div>
+
+          <div class="preset-card">
+            <div class="preset-header">
+              <i class="fas fa-user-shield"></i>
+              <h4>Accès complet</h4>
+            </div>
+            <div class="preset-description">
+              Les joueurs ont tous les droits, comme le MJ.
+            </div>
+            <div class="preset-permissions">
+              <span class="perm-badge granted">Toutes permissions</span>
+            </div>
+            <button 
+              type="button" 
+              class="apply-preset action-btn warning"
+              data-preset="full"
+              data-target="default"
+            >
+              Appliquer par défaut
+            </button>
+          </div>
+        </div>
+
+        <div class="presets-note">
+          <i class="fas fa-lightbulb"></i>
+          <p><strong>Astuce :</strong> Vous pouvez aussi appliquer ces presets individuellement à chaque joueur depuis l'onglet "Joueurs".</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Footer avec boutons de validation -->
+  <footer class="form-footer">
+    <button type="button" class="cancel-btn" data-action="close">
+      <i class="fas fa-times"></i> Annuler
+    </button>
+    <button type="submit" class="submit-btn">
+      <i class="fas fa-save"></i> Sauvegarder et Synchroniser
+    </button>
+  </footer>
+</form>
