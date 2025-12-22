@@ -54,12 +54,14 @@ export class QuestCRUD {
       }
       
       // Émettre l'événement socket
-      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_CREATED, {
-        questData: quest.toJSON()
-      });
+      if (window.questManagerSocket && window.questManagerSocket.initialized) {
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_CREATED, {
+          questData: quest.toJSON()
+        });
+      }
       
-      // Notification
-      if (quest) {
+      // **CORRECTION: Notification seulement si le système est initialisé**
+      if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
         window.questNotifications.notifyQuestCreated(quest);
       }
       
@@ -115,7 +117,7 @@ export class QuestCRUD {
       
       // Appliquer les mises à jour
       Object.assign(quest, updates);
-      quest.touch(); // Mettre à jour le timestamp
+      quest.touch();
       
       // Valider
       const validation = quest.validate();
@@ -125,7 +127,7 @@ export class QuestCRUD {
       }
       
       // Vérifier les dépendances circulaires si le parent a changé
-      if (updates.parentId && quest.parentId) {
+      if (updates.parentId !== undefined && quest.parentId) {
         if (window.questManager.questTree.wouldCreateCircularDependency(quest.id, quest.parentId)) {
           ui.notifications.error("Impossible de modifier cette relation: dépendance circulaire détectée");
           return null;
@@ -137,24 +139,24 @@ export class QuestCRUD {
         await window.questManager.save();
       }
       
-      // **NOUVEAU: Émettre l'événement socket approprié**
-      if (updates.status && updates.status !== oldStatus) {
-        // Changement de statut = événement spécial
-        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
-          questId: quest.id,
-          oldStatus,
-          newStatus: quest.status
-        });
-      } else {
-        // Mise à jour normale
-        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
-          questId: quest.id,
-          updates
-        });
+      // Émettre l'événement socket approprié
+      if (window.questManagerSocket && window.questManagerSocket.initialized) {
+        if (updates.status && updates.status !== oldStatus) {
+          window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
+            questId: quest.id,
+            oldStatus,
+            newStatus: quest.status
+          });
+        } else {
+          window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
+            questId: quest.id,
+            updates
+          });
+        }
       }
       
       // Notification
-      if (quest) {
+      if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
         if (updates.status && updates.status !== oldStatus) {
           window.questNotifications.notifyQuestStatusChanged(quest, oldStatus, updates.status);
           
@@ -237,14 +239,16 @@ export class QuestCRUD {
         await window.questManager.save();
       }
       
-      // **NOUVEAU: Émettre l'événement socket**
-      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_DELETED, {
-        questId,
-        questTitle
-      });
+      // Émettre l'événement socket
+      if (window.questManagerSocket && window.questManagerSocket.initialized) {
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_DELETED, {
+          questId,
+          questTitle
+        });
+      }
       
       // Notification
-      if (success) {
+      if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
         window.questNotifications.notifyQuestDeleted(questTitle);
       }
       
@@ -258,26 +262,6 @@ export class QuestCRUD {
     }
   }
 
-  /**
-   * Récupère toutes les quêtes triées par statut
-   * @param {string} userId
-   * @returns {Object} { active: Quest[], known: Quest[], completed: Quest[] }
-   */
-  static getAllQuestsByStatus(userId = game.user.id) {
-    // Vérifier les permissions
-    if (!window.questManager.permissions.hasPermission(userId, PERMISSION_TYPES.VIEW)) {
-      return { active: [], known: [], completed: [] };
-    }
-    
-    const allQuests = Array.from(window.questManager.questTree.quests.values());
-    
-    return {
-      active: allQuests.filter(q => q.status === 'en_cours'),
-      known: allQuests.filter(q => q.status === 'connue'),
-      completed: allQuests.filter(q => q.status === 'terminee')
-    };
-  }
-  
   /**
    * Distribue les récompenses d'une quête
    * @param {string} questId
@@ -308,18 +292,22 @@ export class QuestCRUD {
         if (game.settings.get("quest-manager", "autoSave")) {
           await window.questManager.save();
         }
-        -
-        // Émettre l'événement socket
-        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
-          questId: quest.id,
-          updates: {
-            rewardsDistributed: true,
-            completedAt: quest.completedAt
-          }
-        });
         
-        // **NOUVEAU: Notification**
-        window.questNotifications.notifyRewardsDistributed(quest, actor, result.items);
+        // Émettre l'événement socket
+        if (window.questManagerSocket && window.questManagerSocket.initialized) {
+          window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
+            questId: quest.id,
+            updates: {
+              rewardsDistributed: true,
+              completedAt: quest.completedAt
+            }
+          });
+        }
+        
+        // Notification
+        if (window.questNotifications && result.items.length > 0) {
+          window.questNotifications.notifyRewardsDistributed(quest, actor, result.items);
+        }
         
         console.log(`Quest Manager | Récompenses distribuées pour: ${quest.id}`);
       }
@@ -362,12 +350,14 @@ export class QuestCRUD {
       }
       
       // Émettre l'événement socket
-      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
-        questId: quest.id,
-        oldStatus: quest.status,
-        newStatus: quest.status,
-        completedBy: actorId
-      });
+      if (window.questManagerSocket && window.questManagerSocket.initialized) {
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
+          questId: quest.id,
+          oldStatus: 'en_cours',
+          newStatus: quest.status,
+          completedBy: actorId
+        });
+      }
       
       if (game.settings.get("quest-manager", "enableNotifications")) {
         const actor = game.actors.get(actorId);
@@ -381,5 +371,25 @@ export class QuestCRUD {
       ui.notifications.error("Erreur lors du marquage de complétion");
       return null;
     }
+  }
+
+  /**
+   * Récupère toutes les quêtes triées par statut
+   * @param {string} userId
+   * @returns {Object} { active: Quest[], known: Quest[], completed: Quest[] }
+   */
+  static getAllQuestsByStatus(userId = game.user.id) {
+    // Vérifier les permissions
+    if (!window.questManager.permissions.hasPermission(userId, PERMISSION_TYPES.VIEW)) {
+      return { active: [], known: [], completed: [] };
+    }
+    
+    const allQuests = Array.from(window.questManager.questTree.quests.values());
+    
+    return {
+      active: allQuests.filter(q => q.status === 'en_cours'),
+      known: allQuests.filter(q => q.status === 'connue'),
+      completed: allQuests.filter(q => q.status === 'terminee')
+    };
   }
 }

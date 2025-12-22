@@ -63,14 +63,15 @@ export class PermissionManager {
    * @param {boolean} value
    * @param {boolean} emitSocket - Si true, émet un événement socket
    */
-  setUserPermission(userId, permissionType, value, emitSocket = true) {
+  async setUserPermission(userId, permissionType, value, emitSocket = true) {
     if (!this.userPermissions[userId]) {
       this.userPermissions[userId] = {};
     }
     this.userPermissions[userId][permissionType] = value;
     
-    // **NOUVEAU: Émettre l'événement socket**
-    if (emitSocket && window.questManagerSocket?.initialized) {
+    // **CORRECTION: Vérifier que le socket est initialisé**
+    if (emitSocket && window.questManagerSocket && window.questManagerSocket.initialized) {
+      const { SOCKET_EVENTS } = await import('./socket.js');
       window.questManagerSocket.emit(SOCKET_EVENTS.PERMISSIONS_UPDATED, {
         targetUserId: userId
       });
@@ -90,8 +91,9 @@ export class PermissionManager {
       await window.questManager.save();
     }
     
-    // **NOUVEAU: Émettre l'événement socket**
-    if (window.questManagerSocket?.initialized) {
+    // **CORRECTION: Import dynamique**
+    if (window.questManagerSocket && window.questManagerSocket.initialized) {
+      const { SOCKET_EVENTS } = await import('./socket.js');
       window.questManagerSocket.emit(SOCKET_EVENTS.PERMISSIONS_UPDATED, {
         targetUserId: userId
       });

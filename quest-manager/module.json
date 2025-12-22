@@ -2,10 +2,11 @@
   "id": "quest-manager",
   "title": "Quest Manager",
   "description": "Un gestionnaire de quêtes avancé avec visualisation en arbre et graphe réseau, permettant de suivre les dépendances et l'avancement des quêtes.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "compatibility": {
     "minimum": "11",
-    "verified": "12"
+    "verified": "12",
+    "maximum": "12"
   },
   "authors": [
     {
@@ -23,7 +24,8 @@
     "https://unpkg.com/vis-network@9.1.2/dist/dist/vis-network.min.css",
     "styles/quest-manager.css",
     "styles/tree-view.css",
-    "styles/graph-view.css"
+    "styles/graph-view.css",
+    "styles/notifications.css"
   ],
   "languages": [
     {
@@ -38,11 +40,7 @@
     }
   ],
   "socket": true,
-  "url": "",
-  "manifest": "",
-  "download": "",
   "license": "MIT",
   "readme": "README.md",
-  "bugs": "",
   "changelog": "CHANGELOG.md"
 }

@@ -3,8 +3,6 @@
  * Permet la communication GM <-> Joueurs
  */
 
-import { QuestCRUD } from './crud.js';
-
 /**
  * Types d'événements socket
  */
@@ -124,8 +122,6 @@ export class SocketManager {
    * @param {Object} payload - Données à envoyer
    */
   emitTo(userId, event, payload) {
-    // Note: Foundry ne supporte pas nativement l'émission ciblée
-    // On utilise donc un filtre côté récepteur
     const data = {
       event,
       payload: {
@@ -155,8 +151,8 @@ export class SocketManager {
     // Rafraîchir l'interface si ouverte
     this.refreshUI();
     
-    // Notification
-    if (game.settings.get("quest-manager", "enableNotifications")) {
+    // **CORRECTION: Vérifier que le système de notifications est initialisé**
+    if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
       const quest = window.questManager.questTree.getQuest(questData.id);
       if (quest) {
         ui.notifications.info(`Nouvelle quête: "${quest.title}"`);
@@ -168,7 +164,7 @@ export class SocketManager {
    * Handler: Quête mise à jour
    */
   async onQuestUpdated(payload) {
-    const { questId, updates } = payload;
+    const { questId } = payload;
     
     // Recharger les données depuis le serveur
     await window.questManager.initialize();
@@ -176,8 +172,7 @@ export class SocketManager {
     // Rafraîchir l'interface si ouverte
     this.refreshUI();
     
-    // Notification
-    if (game.settings.get("quest-manager", "enableNotifications")) {
+    if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
       const quest = window.questManager.questTree.getQuest(questId);
       if (quest) {
         ui.notifications.info(`Quête mise à jour: "${quest.title}"`);
@@ -189,7 +184,7 @@ export class SocketManager {
    * Handler: Quête supprimée
    */
   async onQuestDeleted(payload) {
-    const { questId, questTitle } = payload;
+    const { questTitle } = payload;
     
     // Recharger les données depuis le serveur
     await window.questManager.initialize();
@@ -197,8 +192,7 @@ export class SocketManager {
     // Rafraîchir l'interface si ouverte
     this.refreshUI();
     
-    // Notification
-    if (game.settings.get("quest-manager", "enableNotifications")) {
+    if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
       ui.notifications.info(`Quête supprimée: "${questTitle}"`);
     }
   }
@@ -207,7 +201,7 @@ export class SocketManager {
    * Handler: Statut de quête changé
    */
   async onQuestStatusChanged(payload) {
-    const { questId, oldStatus, newStatus } = payload;
+    const { questId } = payload;
     
     // Recharger les données depuis le serveur
     await window.questManager.initialize();
@@ -215,8 +209,7 @@ export class SocketManager {
     // Rafraîchir l'interface si ouverte
     this.refreshUI();
     
-    // Notification spéciale pour les changements de statut importants
-    if (game.settings.get("quest-manager", "enableNotifications")) {
+    if (window.questNotifications && game.settings.get("quest-manager", "enableNotifications")) {
       const quest = window.questManager.questTree.getQuest(questId);
       if (quest) {
         const statusLabels = {
@@ -226,7 +219,7 @@ export class SocketManager {
         };
         
         ui.notifications.info(
-          `"${quest.title}" est maintenant ${statusLabels[newStatus]}`
+          `"${quest.title}" est maintenant ${statusLabels[quest.status]}`
         );
       }
     }
@@ -278,8 +271,10 @@ export class SocketManager {
     
     console.log("Quest Manager | Données de sync reçues");
     
-    // Pas besoin de sauvegarder, juste charger en mémoire
-    // (le GM est la source de vérité)
+    // **CORRECTION: Import dynamique pour éviter les dépendances circulaires**
+    const { QuestTree } = await import('../models/quest-tree.js');
+    const { PermissionManager } = await import('./permissions.js');
+    
     if (questTree) {
       window.questManager.questTree = QuestTree.fromJSON(questTree);
     }
@@ -300,13 +295,12 @@ export class SocketManager {
     );
     
     if (app) {
-      app.render(false); // false = ne pas faire défiler vers le haut
+      app.render(false);
     }
   }
 
   /**
    * Demande une synchronisation complète au GM
-   * Utile quand un joueur se connecte ou en cas de désynchronisation
    */
   requestSync() {
     if (game.user.isGM) {
@@ -318,6 +312,3 @@ export class SocketManager {
     this.emit(SOCKET_EVENTS.REQUEST_SYNC, {});
   }
 }
-
-// Instance globale
-window.questManagerSocket = new SocketManager();

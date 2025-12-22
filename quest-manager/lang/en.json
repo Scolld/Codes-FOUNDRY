@@ -1,0 +1,11 @@
+{
+  "QUEST_MANAGER": {
+    "Permissions": {
+      "View": "View quests",
+      "Add": "Add quests",
+      "Edit": "Edit quests",
+      "ChangeStatus": "Change status",
+      "Delete": "Delete quests"
+    }
+  }
+}

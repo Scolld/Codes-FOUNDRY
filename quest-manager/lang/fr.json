@@ -1,0 +1,11 @@
+{
+  "QUEST_MANAGER": {
+    "Permissions": {
+      "View": "Voir les quêtes",
+      "Add": "Ajouter des quêtes",
+      "Edit": "Modifier des quêtes",
+      "ChangeStatus": "Changer le statut",
+      "Delete": "Supprimer des quêtes"
+    }
+  }
+}

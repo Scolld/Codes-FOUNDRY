@@ -278,7 +278,7 @@ export class Quest {
       location: this.location,
       npcs: [...this.npcs],
       sortOrder: this.sortOrder,
-      // **NOUVEAU**
+      // **CORRECTION: Ces champs manquaient**
       rewardItems: this.rewardItems.map(item => ({...item})),
       completedBy: this.completedBy,
       completedAt: this.completedAt,
