@@ -122,6 +122,31 @@ export class QuestFormApp extends FormApplication {
     
     // Permissions
     data.isGM = game.user.isGM;
+  
+    // Liste des acteurs disponibles
+    data.availableActors = game.actors
+      .filter(a => a.type === 'character' || a.type === 'npc') // Adapter selon votre système
+      .map(a => ({
+        id: a.id,
+        name: a.name,
+        img: a.img,
+        selected: a.id === data.quest.completedBy
+      }));
+
+    // Récompenses items formatées
+    data.rewardItemsList = data.quest.rewardItems || [];
+    
+    // Informations de complétion
+    data.completionInfo = null;
+    if (data.quest.completedBy) {
+      const completedByActor = game.actors.get(data.quest.completedBy);
+      data.completionInfo = {
+        actorName: completedByActor?.name || "Acteur inconnu",
+        actorImg: completedByActor?.img || "icons/svg/mystery-man.svg",
+        completedAt: data.quest.completedAt ? new Date(data.quest.completedAt).toLocaleString('fr-FR') : null,
+        rewardsDistributed: data.quest.rewardsDistributed
+      };
+    }
     
     return data;
   }
@@ -174,6 +199,15 @@ export class QuestFormApp extends FormApplication {
     
     // Validation en temps réel
     html.find('input[name="title"]').on('input', this._validateTitle.bind(this));
+  
+    // Gestion des récompenses items
+    html.find('#add-reward-item').click(this._onAddRewardItem.bind(this));
+    html.find('.remove-reward-item').click(this._onRemoveRewardItem.bind(this));
+    html.find('.reward-item-drop-zone').on('drop', this._onDropRewardItem.bind(this));
+    html.find('.reward-item-drop-zone').on('dragover', (e) => e.preventDefault());
+    
+    // Distribution des récompenses
+    html.find('#distribute-rewards').click(this._onDistributeRewards.bind(this));
   }
 
   /**
@@ -241,6 +275,192 @@ export class QuestFormApp extends FormApplication {
   }
 
   /**
+   * Handler: Ajouter un item de récompense (via sélection)
+   */
+  async _onAddRewardItem(event) {
+    event.preventDefault();
+    
+    // Ouvrir un dialog pour sélectionner un item
+    const items = game.items.contents;
+    
+    const itemOptions = items.map(item => 
+      `<option value="${item.uuid}">${item.name}</option>`
+    ).join('');
+    
+    const content = `
+      <form>
+        <div class="form-group">
+          <label>Item:</label>
+          <select id="item-select" style="width: 100%;">
+            <option value="">-- Sélectionner un item --</option>
+            ${itemOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantité:</label>
+          <input type="number" id="item-quantity" value="1" min="1" style="width: 100%;">
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+          <i class="fas fa-info-circle"></i> Vous pouvez aussi glisser-déposer un item depuis votre compendium ou inventaire.
+        </p>
+      </form>
+    `;
+    
+    new Dialog({
+      title: "Ajouter une récompense",
+      content: content,
+      buttons: {
+        add: {
+          icon: '<i class="fas fa-plus"></i>',
+          label: "Ajouter",
+          callback: async (html) => {
+            const itemUuid = html.find('#item-select').val();
+            const quantity = parseInt(html.find('#item-quantity').val()) || 1;
+            
+            if (!itemUuid) {
+              ui.notifications.warn("Veuillez sélectionner un item");
+              return;
+            }
+            
+            const item = await fromUuid(itemUuid);
+            if (!item) {
+              ui.notifications.error("Item introuvable");
+              return;
+            }
+            
+            // Ajouter à la liste affichée
+            this._addRewardItemToList({
+              itemId: item.id,
+              itemUuid: item.uuid,
+              itemName: item.name,
+              itemImg: item.img,
+              quantity: quantity
+            });
+          }
+        },
+        cancel: {
+          icon: '<i class="fas fa-times"></i>',
+          label: "Annuler"
+        }
+      },
+      default: "add"
+    }).render(true);
+  }
+
+  /**
+   * Handler: Drop d'un item (drag & drop)
+   */
+  async _onDropRewardItem(event) {
+    event.preventDefault();
+    
+    let data;
+    try {
+      data = JSON.parse(event.originalEvent.dataTransfer.getData('text/plain'));
+    } catch (err) {
+      return;
+    }
+    
+    if (data.type !== 'Item') return;
+    
+    const item = await fromUuid(data.uuid);
+    if (!item) {
+      ui.notifications.error("Item introuvable");
+      return;
+    }
+    
+    // Demander la quantité
+    const quantity = await new Promise((resolve) => {
+      new Dialog({
+        title: "Quantité",
+        content: `
+          <form>
+            <div class="form-group">
+              <label>Quantité de ${item.name}:</label>
+              <input type="number" id="quantity-input" value="1" min="1" style="width: 100%;">
+            </div>
+          </form>
+        `,
+        buttons: {
+          ok: {
+            label: "OK",
+            callback: (html) => resolve(parseInt(html.find('#quantity-input').val()) || 1)
+          },
+          cancel: {
+            label: "Annuler",
+            callback: () => resolve(null)
+          }
+        },
+        default: "ok"
+      }).render(true);
+    });
+    
+    if (quantity === null) return;
+    
+    this._addRewardItemToList({
+      itemId: item.id,
+      itemUuid: item.uuid,
+      itemName: item.name,
+      itemImg: item.img,
+      quantity: quantity
+    });
+  }
+
+  /**
+   * Ajoute un item de récompense à la liste affichée
+   */
+  _addRewardItemToList(itemData) {
+    const listHtml = `
+      <li class="reward-item" data-item-uuid="${itemData.itemUuid}">
+        <img src="${itemData.itemImg}" alt="${itemData.itemName}" />
+        <div class="reward-item-info">
+          <strong>${itemData.itemName}</strong>
+          <span>Quantité: ${itemData.quantity}</span>
+        </div>
+        <button type="button" class="remove-reward-item" title="Supprimer">
+          <i class="fas fa-times"></i>
+        </button>
+      </li>
+    `;
+    
+    this.element.find('#reward-items-list').append(listHtml);
+    
+    // Réattacher les listeners
+    this.element.find('.remove-reward-item').off('click').click(this._onRemoveRewardItem.bind(this));
+  }
+
+  /**
+   * Handler: Supprimer un item de récompense
+   */
+  _onRemoveRewardItem(event) {
+    event.preventDefault();
+    $(event.currentTarget).closest('.reward-item').remove();
+  }
+
+  /**
+   * Handler: Distribuer les récompenses
+   */
+  async _onDistributeRewards(event) {
+    event.preventDefault();
+    
+    if (!this.quest) return;
+    
+    const success = await this.quest.distributeRewards();
+    
+    if (success) {
+      // Sauvegarder
+      await window.questManager.save();
+      
+      // Rafraîchir le formulaire
+      this.render(false);
+      
+      // Rafraîchir l'app parente
+      if (this.parentApp) {
+        this.parentApp.render(false);
+      }
+    }
+  }
+
+  /**
    * Récupère les données du formulaire
    */
   _getSubmitData(updateData = {}) {
@@ -272,6 +492,32 @@ export class QuestFormApp extends FormApplication {
     // Nettoyer les childrenIds (géré automatiquement, pas éditable directement)
     if (this.quest) {
       formData.childrenIds = this.quest.childrenIds;
+    }
+  
+    // Récupérer les récompenses items depuis la liste affichée
+    formData.rewardItems = [];
+    this.element.find('#reward-items-list .reward-item').each((i, el) => {
+      const $el = $(el);
+      const itemUuid = $el.data('item-uuid');
+      const itemName = $el.find('strong').text();
+      const quantity = parseInt($el.find('span').text().match(/\d+/)?.[0]) || 1;
+      const itemImg = $el.find('img').attr('src');
+      
+      formData.rewardItems.push({
+        itemUuid: itemUuid,
+        itemName: itemName,
+        quantity: quantity,
+        itemImg: itemImg
+      });
+    });
+    
+    // Acteur qui a complété
+    formData.completedBy = formData.completedBy || null;
+    
+    // Conserver les champs existants si on ne les modifie pas
+    if (this.quest) {
+      formData.completedAt = this.quest.completedAt;
+      formData.rewardsDistributed = this.quest.rewardsDistributed;
     }
     
     return formData;

@@ -267,4 +267,104 @@ export class QuestCRUD {
       completed: allQuests.filter(q => q.status === 'terminee')
     };
   }
+  
+  /**
+   * Distribue les récompenses d'une quête
+   * @param {string} questId
+   * @param {string} userId
+   * @returns {Promise<boolean>}
+   */
+  static async distributeRewards(questId, userId = game.user.id) {
+    // Vérifier les permissions (seul le GM ou ceux avec droit d'édition)
+    if (!window.questManager.permissions.hasPermission(userId, PERMISSION_TYPES.EDIT) && !game.user.isGM) {
+      ui.notifications.warn("Vous n'avez pas la permission de distribuer des récompenses");
+      return false;
+    }
+    
+    try {
+      const quest = window.questManager.questTree.getQuest(questId);
+      if (!quest) {
+        ui.notifications.error("Quête introuvable");
+        return false;
+      }
+      
+      // Distribuer les récompenses
+      const success = await quest.distributeRewards();
+      
+      if (success) {
+        // Sauvegarder
+        if (game.settings.get("quest-manager", "autoSave")) {
+          await window.questManager.save();
+        }
+        
+        // Émettre l'événement socket
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
+          questId: quest.id,
+          updates: {
+            rewardsDistributed: true,
+            completedAt: quest.completedAt
+          }
+        });
+        
+        console.log(`Quest Manager | Récompenses distribuées pour: ${quest.id}`);
+      }
+      
+      return success;
+      
+    } catch (error) {
+      console.error("Quest Manager | Erreur lors de la distribution des récompenses:", error);
+      ui.notifications.error("Erreur lors de la distribution des récompenses");
+      return false;
+    }
+  }
+
+  /**
+   * Marque une quête comme complétée par un acteur
+   * @param {string} questId
+   * @param {string} actorId
+   * @param {string} userId
+   * @returns {Promise<Quest|null>}
+   */
+  static async markQuestCompletedBy(questId, actorId, userId = game.user.id) {
+    // Vérifier les permissions
+    if (!window.questManager.permissions.hasPermission(userId, PERMISSION_TYPES.CHANGE_STATUS)) {
+      ui.notifications.warn("Vous n'avez pas la permission de changer le statut des quêtes");
+      return null;
+    }
+    
+    try {
+      const quest = window.questManager.questTree.getQuest(questId);
+      if (!quest) {
+        ui.notifications.error("Quête introuvable");
+        return null;
+      }
+      
+      quest.markCompletedBy(actorId);
+      
+      // Sauvegarder
+      if (game.settings.get("quest-manager", "autoSave")) {
+        await window.questManager.save();
+      }
+      
+      // Émettre l'événement socket
+      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
+        questId: quest.id,
+        oldStatus: quest.status,
+        newStatus: quest.status,
+        completedBy: actorId
+      });
+      
+      if (game.settings.get("quest-manager", "enableNotifications")) {
+        const actor = game.actors.get(actorId);
+        ui.notifications.info(`Quête "${quest.title}" complétée par ${actor?.name || 'Acteur inconnu'}`);
+      }
+      
+      return quest;
+      
+    } catch (error) {
+      console.error("Quest Manager | Erreur lors du marquage de complétion:", error);
+      ui.notifications.error("Erreur lors du marquage de complétion");
+      return null;
+    }
+  }
 }

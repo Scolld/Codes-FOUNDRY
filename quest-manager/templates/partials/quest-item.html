@@ -23,8 +23,29 @@
     <!-- Titre (cliquable pour voir les détails) -->
     <span class="quest-title">{{title}}</span>
     
+    <!-- Indicateur de récompenses -->
+    {{#if rewardItems.length}}
+      <span class="reward-indicator" title="{{rewardItems.length}} récompense(s)">
+        <i class="fas fa-gift"></i> {{rewardItems.length}}
+      </span>
+    {{/if}}
+    
+    <!-- Indicateur de complétion -->
+    {{#if completedBy}}
+      <span class="completed-indicator" title="Complétée par {{completedByName}}">
+        <i class="fas fa-user-check"></i>
+      </span>
+    {{/if}}
+    
     <!-- Actions -->
     <div class="quest-actions-inline">
+      <!-- Bouton distribution rapide -->
+      {{#if (and completedBy rewardItems.length (not rewardsDistributed))}}
+        <button class="distribute-rewards-quick action-icon success" title="Distribuer les récompenses" data-quest-id="{{id}}">
+          <i class="fas fa-hand-holding-heart"></i>
+        </button>
+      {{/if}}
+      
       {{#if ../permissions.canChangeStatus}}
         <select class="quest-status-change" title="Changer le statut">
           <option value="connue" {{#if (eq status 'connue')}}selected{{/if}}>Connue</option>

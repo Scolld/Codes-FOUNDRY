@@ -125,6 +125,13 @@ export class QuestManagerApp extends Application {
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(child => this.buildQuestNode(child, allQuests));
     
+    // **NOUVEAU: Récupérer le nom de l'acteur qui a complété**
+    let completedByName = null;
+    if (quest.completedBy) {
+      const actor = game.actors.get(quest.completedBy);
+      completedByName = actor?.name || "Acteur inconnu";
+    }
+    
     return {
       ...quest.toJSON(),
       children,
@@ -133,7 +140,9 @@ export class QuestManagerApp extends Application {
       // Métadonnées pour l'affichage
       statusIcon: this.getStatusIcon(quest.status),
       statusColor: this.getStatusColor(quest.status),
-      statusLabel: this.getStatusLabel(quest.status)
+      statusLabel: this.getStatusLabel(quest.status),
+      // **NOUVEAU**
+      completedByName: completedByName
     };
   }
 
@@ -287,6 +296,9 @@ export class QuestManagerApp extends Application {
     html.find('.quest-delete').click(this._onDeleteQuest.bind(this));
     html.find('.quest-status-change').change(this._onChangeStatus.bind(this));
     html.find('.add-child-quest').click(this._onAddChildQuest.bind(this));
+  
+    // Distribution rapide des récompenses
+    html.find('.distribute-rewards-quick').click(this._onDistributeRewardsQuick.bind(this));
     
     // Vue Graphe (sera développé en Phase 4)
     // html.find('#graph-container') sera géré par vis.js
@@ -577,6 +589,38 @@ export class QuestManagerApp extends Application {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Handler: Distribution rapide des récompenses
+   */
+  async _onDistributeRewardsQuick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const questId = $(event.currentTarget).data('quest-id');
+    const quest = QuestCRUD.getQuest(questId);
+    
+    if (!quest) return;
+    
+    // Confirmer
+    const confirm = await Dialog.confirm({
+      title: "Distribuer les récompenses",
+      content: `<p>Distribuer les récompenses de la quête "<strong>${quest.title}</strong>" ?</p>
+                <p>${quest.rewardItems.length} item(s) seront ajoutés à l'inventaire de l'acteur.</p>`,
+      yes: () => true,
+      no: () => false
+    });
+    
+    if (!confirm) return;
+    
+    // Distribuer
+    const success = await quest.distributeRewards();
+    
+    if (success) {
+      await window.questManager.save();
+      this.render(false);
+    }
   }
 
   // ========================================================================

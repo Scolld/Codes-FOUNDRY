@@ -94,10 +94,16 @@ export class Quest {
     
     // Données optionnelles
     this.notes = data.notes || "";
-    this.rewards = data.rewards || "";
+    this.rewards = data.rewards || ""; // Texte libre (conservé pour compatibilité)
     this.location = data.location || "";
     this.npcs = data.npcs || [];
     this.sortOrder = data.sortOrder || 0;
+    
+    // **NOUVEAU: Système de récompenses items**
+    this.rewardItems = data.rewardItems || []; // Array de {itemId, itemUuid, itemName, quantity, itemImg}
+    this.completedBy = data.completedBy || null; // ID de l'acteur qui a complété la quête
+    this.completedAt = data.completedAt || null; // Timestamp de complétion
+    this.rewardsDistributed = data.rewardsDistributed || false; // Les récompenses ont-elles été distribuées ?
   }
 
   /**
@@ -150,6 +156,132 @@ export class Quest {
   }
 
   /**
+   * Ajoute un item de récompense
+   * @param {Object} itemData - {itemId, itemUuid, itemName, quantity, itemImg}
+   */
+  addRewardItem(itemData) {
+    this.rewardItems.push({
+      itemId: itemData.itemId || itemData.itemUuid,
+      itemUuid: itemData.itemUuid,
+      itemName: itemData.itemName || "Item inconnu",
+      quantity: itemData.quantity || 1,
+      itemImg: itemData.itemImg || "icons/svg/item-bag.svg"
+    });
+    this.touch();
+  }
+
+  /**
+   * Supprime un item de récompense
+   * @param {number} index - Index de l'item à supprimer
+   */
+  removeRewardItem(index) {
+    if (index >= 0 && index < this.rewardItems.length) {
+      this.rewardItems.splice(index, 1);
+      this.touch();
+    }
+  }
+
+  /**
+   * Marque la quête comme complétée par un acteur
+   * @param {string} actorId - ID de l'acteur
+   */
+  markCompletedBy(actorId) {
+    this.completedBy = actorId;
+    this.completedAt = new Date().toISOString();
+    this.status = QUEST_STATUS.COMPLETED;
+    this.touch();
+  }
+
+  /**
+   * Distribue les récompenses à l'acteur qui a complété la quête
+   * @returns {Promise<boolean>}
+   */
+  async distributeRewards() {
+    if (!this.completedBy) {
+      ui.notifications.warn("Aucun acteur n'a été assigné comme complétant cette quête");
+      return false;
+    }
+
+    if (this.rewardsDistributed) {
+      ui.notifications.warn("Les récompenses ont déjà été distribuées");
+      return false;
+    }
+
+    const actor = game.actors.get(this.completedBy);
+    if (!actor) {
+      ui.notifications.error("Acteur introuvable");
+      return false;
+    }
+
+    try {
+      const addedItems = [];
+
+      for (const rewardItem of this.rewardItems) {
+        // Récupérer l'item depuis l'UUID
+        let item;
+        if (rewardItem.itemUuid) {
+          item = await fromUuid(rewardItem.itemUuid);
+        } else if (rewardItem.itemId) {
+          item = game.items.get(rewardItem.itemId);
+        }
+
+        if (!item) {
+          console.warn(`Quest Manager | Item introuvable: ${rewardItem.itemName}`);
+          continue;
+        }
+
+        // Créer une copie de l'item avec la quantité
+        const itemData = item.toObject();
+        
+        // Gérer la quantité selon le système de jeu
+        if (itemData.system && 'quantity' in itemData.system) {
+          itemData.system.quantity = rewardItem.quantity;
+        } else if (itemData.data && 'quantity' in itemData.data) {
+          itemData.data.quantity = rewardItem.quantity;
+        }
+
+        // Ajouter l'item à l'acteur
+        const createdItems = await actor.createEmbeddedDocuments("Item", [itemData]);
+        addedItems.push(...createdItems);
+      }
+
+      this.rewardsDistributed = true;
+      this.touch();
+
+      ui.notifications.info(
+        `${addedItems.length} récompense(s) distribuée(s) à ${actor.name}`
+      );
+
+      // Message dans le chat
+      if (game.settings.get("quest-manager", "enableNotifications")) {
+        ChatMessage.create({
+          content: `
+            <div class="quest-rewards-message">
+              <h3>🎁 Quête Terminée!</h3>
+              <p><strong>${this.title}</strong></p>
+              <p>${actor.name} a reçu les récompenses suivantes:</p>
+              <ul>
+                ${addedItems.map(item => {
+                  const qty = item.system?.quantity || item.data?.quantity;
+                  return `<li>${item.name}${qty && qty > 1 ? ` (x${qty})` : ''}</li>`;
+                }).join('')}
+              </ul>
+            </div>
+          `,
+          speaker: { alias: "Quest Manager" }
+        });
+      }
+
+      return true;
+
+    } catch (error) {
+      console.error("Quest Manager | Erreur lors de la distribution des récompenses:", error);
+      ui.notifications.error("Erreur lors de la distribution des récompenses");
+      return false;
+    }
+  }
+
+  /**
    * Convertit la quête en objet simple pour la sauvegarde
    * @returns {Object}
    */
@@ -172,7 +304,12 @@ export class Quest {
       rewards: this.rewards,
       location: this.location,
       npcs: [...this.npcs],
-      sortOrder: this.sortOrder
+      sortOrder: this.sortOrder,
+      // **NOUVEAU**
+      rewardItems: this.rewardItems.map(item => ({...item})),
+      completedBy: this.completedBy,
+      completedAt: this.completedAt,
+      rewardsDistributed: this.rewardsDistributed
     };
   }
 

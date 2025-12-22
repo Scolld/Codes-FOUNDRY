@@ -7,6 +7,9 @@
     <a class="item" data-tab="relations">
       <i class="fas fa-link"></i> Relations
     </a>
+    <a class="item" data-tab="rewards">
+      <i class="fas fa-gift"></i> Récompenses
+    </a>
     <a class="item" data-tab="details">
       <i class="fas fa-file-alt"></i> Détails
     </a>
@@ -170,6 +173,106 @@
         </div>
         <p class="hint">Quêtes liées par contexte ou histoire (sans dépendance)</p>
       </div>
+    </div>
+
+    <!-- Onglet: Récompenses -->
+    <div class="tab" data-tab="rewards">
+      <div class="form-group">
+        <label>
+          <i class="fas fa-gift"></i> Récompenses (Texte libre)
+        </label>
+        <textarea 
+          name="rewards" 
+          id="rewards" 
+          class="editor"
+          rows="4"
+          placeholder="Description textuelle des récompenses..."
+        >{{quest.rewards}}</textarea>
+        <p class="hint">Supporte les liens Foundry pour les items: @Item[id]{nom}</p>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-treasure-chest"></i> Items de récompense
+        </label>
+        
+        <div class="reward-item-drop-zone">
+          <div class="drop-zone-hint">
+            <i class="fas fa-hand-holding-box"></i>
+            <p>Glissez-déposez des items ici ou cliquez sur "Ajouter un item"</p>
+          </div>
+        </div>
+        
+        <ul id="reward-items-list" class="reward-items-list">
+          {{#each rewardItemsList}}
+            <li class="reward-item" data-item-uuid="{{itemUuid}}">
+              <img src="{{itemImg}}" alt="{{itemName}}" />
+              <div class="reward-item-info">
+                <strong>{{itemName}}</strong>
+                <span>Quantité: {{quantity}}</span>
+              </div>
+              <button type="button" class="remove-reward-item" title="Supprimer">
+                <i class="fas fa-times"></i>
+              </button>
+            </li>
+          {{/each}}
+        </ul>
+        
+        <button type="button" id="add-reward-item" class="action-btn">
+          <i class="fas fa-plus"></i> Ajouter un item
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label>
+          <i class="fas fa-user-check"></i> Complétée par
+        </label>
+        <select name="completedBy" id="completedBy">
+          <option value="">-- Aucun --</option>
+          {{#each availableActors}}
+            <option value="{{id}}" {{#if selected}}selected{{/if}}>
+              {{name}}
+            </option>
+          {{/each}}
+        </select>
+        <p class="hint">Sélectionnez l'acteur qui a terminé cette quête pour distribuer les récompenses</p>
+      </div>
+
+      {{#if completionInfo}}
+        <div class="completion-info">
+          <h4><i class="fas fa-check-circle"></i> Informations de complétion</h4>
+          
+          <div class="completion-details">
+            <div class="completion-actor">
+              <img src="{{completionInfo.actorImg}}" alt="{{completionInfo.actorName}}" />
+              <div>
+                <strong>{{completionInfo.actorName}}</strong>
+                {{#if completionInfo.completedAt}}
+                  <span>Complétée le {{completionInfo.completedAt}}</span>
+                {{/if}}
+              </div>
+            </div>
+            
+            {{#if completionInfo.rewardsDistributed}}
+              <div class="rewards-status distributed">
+                <i class="fas fa-check-double"></i>
+                <span>Récompenses distribuées</span>
+              </div>
+            {{else}}
+              {{#if rewardItemsList.length}}
+                <button type="button" id="distribute-rewards" class="action-btn success">
+                  <i class="fas fa-hand-holding-heart"></i> Distribuer les récompenses
+                </button>
+              {{else}}
+                <div class="rewards-status no-rewards">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Aucune récompense item à distribuer</span>
+                </div>
+              {{/if}}
+            {{/if}}
+          </div>
+        </div>
+      {{/if}}
     </div>
 
     <!-- Onglet: Détails -->
