@@ -1,0 +1,59 @@
+<!-- Partial pour un item de quête dans la vue arbre -->
+<li class="quest-item {{status}}" data-quest-id="{{id}}" draggable="true">
+  <div class="quest-header-row">
+    <!-- Toggle pour déplier/replier -->
+    {{#if hasChildren}}
+      <button class="quest-toggle" title="{{#if isExpanded}}Replier{{else}}Déplier{{/if}}">
+        <i class="fas {{#if isExpanded}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i>
+      </button>
+    {{else}}
+      <span class="quest-spacer"></span>
+    {{/if}}
+    
+    <!-- Badge de statut -->
+    <span class="status-badge" style="background-color: {{statusColor}}">
+      <i class="fas {{statusIcon}}"></i>
+    </span>
+    
+    <!-- Titre (cliquable pour voir les détails) -->
+    <span class="quest-title">{{title}}</span>
+    
+    <!-- Actions -->
+    <div class="quest-actions-inline">
+      {{#if ../permissions.canChangeStatus}}
+        <select class="quest-status-change" title="Changer le statut">
+          <option value="connue" {{#if (eq status 'connue')}}selected{{/if}}>Connue</option>
+          <option value="en_cours" {{#if (eq status 'en_cours')}}selected{{/if}}>En cours</option>
+          <option value="terminee" {{#if (eq status 'terminee')}}selected{{/if}}>Terminée</option>
+        </select>
+      {{/if}}
+      
+      {{#if ../permissions.canAdd}}
+        <button class="add-child-quest action-icon" title="Ajouter une sous-quête">
+          <i class="fas fa-plus"></i>
+        </button>
+      {{/if}}
+      
+      {{#if ../permissions.canEdit}}
+        <button class="quest-edit action-icon" title="Éditer">
+          <i class="fas fa-edit"></i>
+        </button>
+      {{/if}}
+      
+      {{#if ../permissions.canDelete}}
+        <button class="quest-delete action-icon" title="Supprimer">
+          <i class="fas fa-trash"></i>
+        </button>
+      {{/if}}
+    </div>
+  </div>
+  
+  <!-- Sous-quêtes (si dépliées) -->
+  {{#if (and hasChildren isExpanded)}}
+    <ul class="quest-children">
+      {{#each children}}
+        {{> questItem this}}
+      {{/each}}
+    </ul>
+  {{/if}}
+</li>

@@ -239,6 +239,54 @@ Hooks.once('ready', async () => {
 });
 
 /**
+ * Macro globale pour ouvrir le gestionnaire de quêtes
+ */
+Hooks.on('getSceneControlButtons', (controls) => {
+  // Ajouter un bouton dans la barre d'outils
+  controls.push({
+    name: "quest-manager",
+    title: "Gestionnaire de Quêtes",
+    icon: "fas fa-book-open",
+    visible: true,
+    onClick: () => {
+      // Ouvrir ou focus l'application
+      const existingApp = Object.values(ui.windows).find(
+        w => w.constructor.name === "QuestManagerApp"
+      );
+      
+      if (existingApp) {
+        existingApp.bringToTop();
+      } else {
+        import('./apps/quest-manager-app.js').then(module => {
+          new module.QuestManagerApp().render(true);
+        });
+      }
+    },
+    button: true
+  });
+});
+
+// Alternative: Ajouter dans le menu des acteurs/items
+Hooks.on('renderSidebarTab', (app, html) => {
+  if (app.tabName === "chat") {
+    // Ajouter un bouton dans le chat
+    const button = $(`
+      <button class="quest-manager-btn">
+        <i class="fas fa-book-open"></i> Quêtes
+      </button>
+    `);
+    
+    button.click(() => {
+      import('./apps/quest-manager-app.js').then(module => {
+        new module.QuestManagerApp().render(true);
+      });
+    });
+    
+    html.find('.directory-footer').append(button);
+  }
+});
+
+/**
  * Hook : Avant la fermeture du navigateur
  */
 Hooks.on('closeApplication', async (app) => {
