@@ -1,3 +1,5 @@
+import { SOCKET_EVENTS } from './socket.js';
+
 /**
  * Types de permissions
  */
@@ -59,12 +61,41 @@ export class PermissionManager {
    * @param {string} userId
    * @param {string} permissionType
    * @param {boolean} value
+   * @param {boolean} emitSocket - Si true, émet un événement socket
    */
-  setUserPermission(userId, permissionType, value) {
+  setUserPermission(userId, permissionType, value, emitSocket = true) {
     if (!this.userPermissions[userId]) {
       this.userPermissions[userId] = {};
     }
     this.userPermissions[userId][permissionType] = value;
+    
+    // **NOUVEAU: Émettre l'événement socket**
+    if (emitSocket && window.questManagerSocket?.initialized) {
+      window.questManagerSocket.emit(SOCKET_EVENTS.PERMISSIONS_UPDATED, {
+        targetUserId: userId
+      });
+    }
+  }
+
+  /**
+   * Définit toutes les permissions pour un utilisateur
+   * @param {string} userId
+   * @param {Object} permissions
+   */
+  async setAllUserPermissions(userId, permissions) {
+    this.userPermissions[userId] = { ...permissions };
+    
+    // Sauvegarder
+    if (game.settings.get("quest-manager", "autoSave")) {
+      await window.questManager.save();
+    }
+    
+    // **NOUVEAU: Émettre l'événement socket**
+    if (window.questManagerSocket?.initialized) {
+      window.questManagerSocket.emit(SOCKET_EVENTS.PERMISSIONS_UPDATED, {
+        targetUserId: userId
+      });
+    }
   }
 
   /**

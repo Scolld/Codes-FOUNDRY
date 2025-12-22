@@ -1,9 +1,11 @@
 import { Quest } from '../models/quest.js';
 import { PERMISSION_TYPES } from './permissions.js';
+import { SOCKET_EVENTS } from './socket.js';
 
 /**
  * Classe avec méthodes CRUD pour les quêtes
- * Toutes les méthodes incluent la vérification des permissions et la sauvegarde automatique
+ * Toutes les méthodes incluent la vérification des permissions, 
+ * la sauvegarde automatique ET l'émission de sockets
  */
 export class QuestCRUD {
   
@@ -50,6 +52,11 @@ export class QuestCRUD {
       if (game.settings.get("quest-manager", "autoSave")) {
         await window.questManager.save();
       }
+      
+      // **NOUVEAU: Émettre l'événement socket**
+      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_CREATED, {
+        questData: quest.toJSON()
+      });
       
       // Notification
       if (game.settings.get("quest-manager", "enableNotifications")) {
@@ -103,6 +110,9 @@ export class QuestCRUD {
         return null;
       }
       
+      // Sauvegarder l'ancien statut pour l'événement
+      const oldStatus = quest.status;
+      
       // Appliquer les mises à jour
       Object.assign(quest, updates);
       quest.touch(); // Mettre à jour le timestamp
@@ -125,6 +135,22 @@ export class QuestCRUD {
       // Sauvegarder si activé
       if (game.settings.get("quest-manager", "autoSave")) {
         await window.questManager.save();
+      }
+      
+      // **NOUVEAU: Émettre l'événement socket approprié**
+      if (updates.status && updates.status !== oldStatus) {
+        // Changement de statut = événement spécial
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_STATUS_CHANGED, {
+          questId: quest.id,
+          oldStatus,
+          newStatus: quest.status
+        });
+      } else {
+        // Mise à jour normale
+        window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
+          questId: quest.id,
+          updates
+        });
       }
       
       // Notification
@@ -179,6 +205,9 @@ export class QuestCRUD {
         return false;
       }
       
+      // Sauvegarder le titre pour la notification
+      const questTitle = quest.title;
+      
       // Demander confirmation
       const confirm = await Dialog.confirm({
         title: "Supprimer la quête",
@@ -198,9 +227,15 @@ export class QuestCRUD {
         await window.questManager.save();
       }
       
+      // **NOUVEAU: Émettre l'événement socket**
+      window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_DELETED, {
+        questId,
+        questTitle
+      });
+      
       // Notification
       if (game.settings.get("quest-manager", "enableNotifications")) {
-        ui.notifications.info(`Quête "${quest.title}" supprimée`);
+        ui.notifications.info(`Quête "${questTitle}" supprimée`);
       }
       
       console.log(`Quest Manager | Quête supprimée: ${questId}`);

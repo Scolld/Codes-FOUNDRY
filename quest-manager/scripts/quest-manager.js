@@ -6,6 +6,7 @@
 import { StorageManager } from './utils/storage.js';
 import { QuestTree } from './models/quest-tree.js';
 import { PermissionManager } from './utils/permissions.js';
+import { SocketManager } from './utils/socket.js';
 
 // Namespace global pour le module
 class QuestManager {
@@ -23,6 +24,10 @@ class QuestManager {
     
     // Enregistrer les settings
     StorageManager.registerSettings();
+
+    if (!window.questManagerSocket.initialized) {
+      window.questManagerSocket.initialize();
+    }
     
     // Charger les données
     try {
@@ -209,6 +214,12 @@ Hooks.once('ready', async () => {
   
   // Initialiser le module
   await window.questManager.initialize();
+  
+  if (!game.user.isGM) {
+    setTimeout(() => {
+      window.questManagerSocket.requestSync();
+    }, 2000); // Attendre 2 secondes pour que tout soit bien initialisé
+  }
   
   // Configurer la sauvegarde automatique par intervalle
   const saveInterval = game.settings.get("quest-manager", "saveInterval");
