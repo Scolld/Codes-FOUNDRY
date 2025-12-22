@@ -1,0 +1,44 @@
+{
+  "id": "quest-manager",
+  "title": "Quest Manager",
+  "description": "Un gestionnaire de quêtes avancé avec visualisation en arbre et graphe réseau, permettant de suivre les dépendances et l'avancement des quêtes.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "12"
+  },
+  "authors": [
+    {
+      "name": "Clément",
+      "flags": {}
+    }
+  ],
+  "esmodules": [
+    "scripts/quest-manager.js"
+  ],
+  "styles": [
+    "styles/quest-manager.css",
+    "styles/tree-view.css",
+    "styles/graph-view.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "fr",
+      "name": "Français",
+      "path": "lang/fr.json"
+    }
+  ],
+  "socket": true,
+  "url": "",
+  "manifest": "",
+  "download": "",
+  "license": "MIT",
+  "readme": "README.md",
+  "bugs": "",
+  "changelog": "CHANGELOG.md"
+}
