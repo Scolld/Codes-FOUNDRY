@@ -16,7 +16,11 @@
   "esmodules": [
     "scripts/quest-manager.js"
   ],
+  "scripts": [
+    "https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"
+  ],
   "styles": [
+    "https://unpkg.com/vis-network@9.1.2/dist/dist/vis-network.min.css",
     "styles/quest-manager.css",
     "styles/tree-view.css",
     "styles/graph-view.css"

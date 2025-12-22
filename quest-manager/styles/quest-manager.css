@@ -843,3 +843,333 @@
   color: #ffc107;
   font-size: 1.2rem;
 }
+
+/* ==========================================================================
+   Tree View - Animations et interactions avancées
+   ========================================================================== */
+
+/* Animations keyframes */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes dropSuccess {
+  0% {
+    background: #d4edda;
+    border-color: #28a745;
+  }
+  100% {
+    background: white;
+    border-color: var(--quest-border);
+  }
+}
+
+/* États de drag & drop */
+.quest-item.dragging {
+  opacity: 0.4;
+  cursor: move;
+}
+
+.quest-item.drag-over {
+  background: #fff8e1;
+  border-color: var(--quest-color-active);
+  box-shadow: 0 0 10px rgba(245, 166, 35, 0.3);
+}
+
+.quest-item.drag-over-top {
+  border-top: 3px solid var(--quest-color-active);
+  margin-top: 3px;
+}
+
+.quest-item.drag-over-bottom {
+  border-bottom: 3px solid var(--quest-color-active);
+  margin-bottom: 3px;
+}
+
+.quest-item.not-droppable {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #ffe0e0;
+}
+
+.quest-item.drop-success {
+  animation: dropSuccess 0.6s ease-out;
+}
+
+/* Highlight de quête */
+.quest-item.quest-highlight {
+  animation: pulse 0.5s ease-in-out 3;
+  background: #fff3cd;
+  border-color: #ffc107;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.5);
+}
+
+/* Hover amélioré */
+.quest-item {
+  transition: all 0.2s ease-out;
+}
+
+.quest-item:hover {
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.quest-item.dragging:hover {
+  transform: none;
+}
+
+/* Toggle avec animation */
+.quest-toggle {
+  transition: transform 0.2s ease-out;
+}
+
+.quest-item:hover .quest-toggle {
+  transform: scale(1.2);
+}
+
+/* Enfants avec animation de dépliage */
+.quest-children {
+  overflow: hidden;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 1000px;
+  }
+}
+
+/* Badge de statut avec animation au survol */
+.status-badge {
+  transition: all 0.2s ease-out;
+  cursor: help;
+}
+
+.status-badge:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Actions inline avec animation */
+.quest-actions-inline {
+  opacity: 0.6;
+  transition: opacity 0.2s ease-out;
+}
+
+.quest-item:hover .quest-actions-inline {
+  opacity: 1;
+}
+
+.action-icon {
+  transition: all 0.2s ease-out;
+}
+
+.action-icon:hover {
+  transform: scale(1.2);
+}
+
+/* Indicateur de relations */
+.quest-item[data-has-relations="true"] .quest-title::after {
+  content: "🔗";
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  opacity: 0.5;
+}
+
+/* Indicateur de sous-quêtes */
+.quest-item .quest-title {
+  position: relative;
+}
+
+.quest-item[data-children-count]:not([data-children-count="0"]) .quest-title::before {
+  content: "(" attr(data-children-count) ")";
+  margin-right: 0.3rem;
+  font-size: 0.8rem;
+  color: #999;
+  font-weight: normal;
+}
+
+/* Bordure colorée selon le statut */
+.quest-item.connue {
+  border-left: 4px solid var(--quest-color-known);
+}
+
+.quest-item.en_cours {
+  border-left: 4px solid var(--quest-color-active);
+}
+
+.quest-item.terminee {
+  border-left: 4px solid var(--quest-color-completed);
+  opacity: 0.7;
+}
+
+/* Effet au focus (accessibilité) */
+.quest-item:focus-within {
+  outline: 2px solid var(--quest-color-active);
+  outline-offset: 2px;
+}
+
+/* Loading state */
+.quest-item.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.quest-item.loading::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.5) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Smooth scroll pour la liste */
+.quest-content {
+  scroll-behavior: smooth;
+}
+
+/* Amélioration visuelle des sections */
+.quest-section {
+  position: relative;
+}
+
+.quest-section::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--quest-color-known);
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.quest-section:hover::before {
+  opacity: 1;
+}
+
+.active-section::before {
+  background: var(--quest-color-active);
+}
+
+.completed-section::before {
+  background: var(--quest-color-completed);
+}
+
+/* Icône de drag */
+.quest-item::before {
+  content: "⋮⋮";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #999;
+  font-size: 0.8rem;
+  cursor: move;
+}
+
+.quest-item:hover::before {
+  opacity: 0.5;
+}
+
+.quest-item.dragging::before {
+  opacity: 0;
+}
+
+/* Message d'erreur lors du drag */
+.drag-error-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #f44336;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10000;
+  animation: shake 0.5s ease-out;
+}
+
+/* Raccourcis clavier - Indicateur */
+.keyboard-shortcuts-hint {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.keyboard-shortcuts-hint.show {
+  opacity: 1;
+}
+
+/* Responsive - Mobile */
+@media (max-width: 768px) {
+  .quest-item {
+    font-size: 0.9rem;
+  }
+  
+  .quest-actions-inline {
+    flex-direction: column;
+  }
+  
+  .quest-item::before {
+    display: none;
+  }
+  
+  /* Désactiver certaines animations sur mobile */
+  .quest-item:hover {
+    transform: none;
+  }
+}

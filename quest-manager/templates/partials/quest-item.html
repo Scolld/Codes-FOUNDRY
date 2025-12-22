@@ -1,5 +1,10 @@
 <!-- Partial pour un item de quête dans la vue arbre -->
-<li class="quest-item {{status}}" data-quest-id="{{id}}" draggable="true">
+<li class="quest-item {{status}}" 
+    data-quest-id="{{id}}" 
+    data-status="{{status}}"
+    data-children-count="{{children.length}}"
+    data-has-relations="{{#if (or blockedByIds.length blocksIds.length relatedIds.length)}}true{{/if}}"
+    draggable="true">
   <div class="quest-header-row">
     <!-- Toggle pour déplier/replier -->
     {{#if hasChildren}}
@@ -11,7 +16,7 @@
     {{/if}}
     
     <!-- Badge de statut -->
-    <span class="status-badge" style="background-color: {{statusColor}}">
+    <span class="status-badge" style="background-color: {{statusColor}}" title="{{statusLabel}}">
       <i class="fas {{statusIcon}}"></i>
     </span>
     

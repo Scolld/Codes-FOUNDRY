@@ -5,6 +5,8 @@
 
 import { QuestCRUD } from '../utils/crud.js';
 import { PERMISSION_TYPES } from '../utils/permissions.js';
+import { TreeView } from '../views/tree-view.js';
+import { GraphView } from '../views/graph-view.js';
 
 export class QuestManagerApp extends Application {
   constructor(options = {}) {
@@ -14,6 +16,8 @@ export class QuestManagerApp extends Application {
     this.showCompleted = game.settings.get("quest-manager", "showCompletedByDefault");
     this.searchQuery = "";
     this.expandedQuestIds = new Set(); // IDs des quêtes dépliées
+    this.treeView = new TreeView(this);
+    this.graphView = new GraphView(this);
   }
 
   /**
@@ -287,14 +291,12 @@ export class QuestManagerApp extends Application {
     // Vue Graphe (sera développé en Phase 4)
     // html.find('#graph-container') sera géré par vis.js
     
-    // Drag & Drop (Vue Arbre) - pour réorganiser
-    html.find('.quest-item').each((i, el) => {
-      el.setAttribute('draggable', true);
-      el.addEventListener('dragstart', this._onDragStart.bind(this));
-      el.addEventListener('dragover', this._onDragOver.bind(this));
-      el.addEventListener('drop', this._onDrop.bind(this));
-      el.addEventListener('dragend', this._onDragEnd.bind(this));
-    });
+    // Initialiser la vue arbre avec interactions avancées
+    if (this.currentView === 'tree') {
+      this.treeView.initialize(html);
+    } else if (this.currentView === 'graph') {
+      this.graphView.initialize(html);
+    }
   }
 
   // ========================================================================
@@ -318,9 +320,9 @@ export class QuestManagerApp extends Application {
     tabContent.find('.tab-pane').removeClass('active');
     tabContent.find(`#${tab}-view`).addClass('active');
     
-    // Si vue graphe, initialiser/rafraîchir le graphe
+    // Initialiser la vue graphe si nécessaire
     if (tab === 'graph') {
-      this._renderGraph();
+      this.graphView.initialize(this.element);
     }
   }
 
@@ -624,5 +626,17 @@ export class QuestManagerApp extends Application {
   _renderGraph() {
     console.log("Quest Manager | Rendu du graphe (à implémenter en Phase 4)");
     // TODO: Implémenter avec vis.js en Phase 4
+  }
+  
+  /**
+   * Fermeture de l'application
+   */
+  async close(options) {
+    // Détruire le réseau vis.js
+    if (this.graphView) {
+      this.graphView.destroy();
+    }
+    
+    return super.close(options);
   }
 }
