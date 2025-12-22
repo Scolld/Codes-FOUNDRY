@@ -199,25 +199,24 @@ export class Quest {
   async distributeRewards() {
     if (!this.completedBy) {
       ui.notifications.warn("Aucun acteur n'a été assigné comme complétant cette quête");
-      return false;
+      return { success: false, items: [] };
     }
 
     if (this.rewardsDistributed) {
       ui.notifications.warn("Les récompenses ont déjà été distribuées");
-      return false;
+      return { success: false, items: [] };
     }
 
     const actor = game.actors.get(this.completedBy);
     if (!actor) {
       ui.notifications.error("Acteur introuvable");
-      return false;
+      return { success: false, items: [] };
     }
 
     try {
       const addedItems = [];
 
       for (const rewardItem of this.rewardItems) {
-        // Récupérer l'item depuis l'UUID
         let item;
         if (rewardItem.itemUuid) {
           item = await fromUuid(rewardItem.itemUuid);
@@ -230,17 +229,14 @@ export class Quest {
           continue;
         }
 
-        // Créer une copie de l'item avec la quantité
         const itemData = item.toObject();
         
-        // Gérer la quantité selon le système de jeu
         if (itemData.system && 'quantity' in itemData.system) {
           itemData.system.quantity = rewardItem.quantity;
         } else if (itemData.data && 'quantity' in itemData.data) {
           itemData.data.quantity = rewardItem.quantity;
         }
 
-        // Ajouter l'item à l'acteur
         const createdItems = await actor.createEmbeddedDocuments("Item", [itemData]);
         addedItems.push(...createdItems);
       }
@@ -248,36 +244,13 @@ export class Quest {
       this.rewardsDistributed = true;
       this.touch();
 
-      ui.notifications.info(
-        `${addedItems.length} récompense(s) distribuée(s) à ${actor.name}`
-      );
-
-      // Message dans le chat
-      if (game.settings.get("quest-manager", "enableNotifications")) {
-        ChatMessage.create({
-          content: `
-            <div class="quest-rewards-message">
-              <h3>🎁 Quête Terminée!</h3>
-              <p><strong>${this.title}</strong></p>
-              <p>${actor.name} a reçu les récompenses suivantes:</p>
-              <ul>
-                ${addedItems.map(item => {
-                  const qty = item.system?.quantity || item.data?.quantity;
-                  return `<li>${item.name}${qty && qty > 1 ? ` (x${qty})` : ''}</li>`;
-                }).join('')}
-              </ul>
-            </div>
-          `,
-          speaker: { alias: "Quest Manager" }
-        });
-      }
-
-      return true;
+      // **MODIFIÉ: Retourner les items pour la notification**
+      return { success: true, items: addedItems };
 
     } catch (error) {
       console.error("Quest Manager | Erreur lors de la distribution des récompenses:", error);
       ui.notifications.error("Erreur lors de la distribution des récompenses");
-      return false;
+      return { success: false, items: [] };
     }
   }
 

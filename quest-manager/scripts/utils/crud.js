@@ -53,14 +53,14 @@ export class QuestCRUD {
         await window.questManager.save();
       }
       
-      // **NOUVEAU: Émettre l'événement socket**
+      // Émettre l'événement socket
       window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_CREATED, {
         questData: quest.toJSON()
       });
       
       // Notification
-      if (game.settings.get("quest-manager", "enableNotifications")) {
-        ui.notifications.info(`Quête "${quest.title}" créée`);
+      if (quest) {
+        window.questNotifications.notifyQuestCreated(quest);
       }
       
       console.log(`Quest Manager | Quête créée: ${quest.id}`);
@@ -154,8 +154,18 @@ export class QuestCRUD {
       }
       
       // Notification
-      if (game.settings.get("quest-manager", "enableNotifications")) {
-        ui.notifications.info(`Quête "${quest.title}" mise à jour`);
+      if (quest) {
+        if (updates.status && updates.status !== oldStatus) {
+          window.questNotifications.notifyQuestStatusChanged(quest, oldStatus, updates.status);
+          
+          // Vérifier les quêtes débloquées
+          if (updates.status === 'terminee') {
+            window.questNotifications.checkUnlockedQuests(questId);
+            window.questNotifications.checkAchievements();
+          }
+        } else {
+          window.questNotifications.notifyQuestUpdated(quest);
+        }
       }
       
       console.log(`Quest Manager | Quête mise à jour: ${quest.id}`);
@@ -234,8 +244,8 @@ export class QuestCRUD {
       });
       
       // Notification
-      if (game.settings.get("quest-manager", "enableNotifications")) {
-        ui.notifications.info(`Quête "${questTitle}" supprimée`);
+      if (success) {
+        window.questNotifications.notifyQuestDeleted(questTitle);
       }
       
       console.log(`Quest Manager | Quête supprimée: ${questId}`);
@@ -289,14 +299,16 @@ export class QuestCRUD {
       }
       
       // Distribuer les récompenses
-      const success = await quest.distributeRewards();
+      const result = await quest.distributeRewards();
       
-      if (success) {
+      if (result.success) {
+        const actor = game.actors.get(quest.completedBy);
+        
         // Sauvegarder
         if (game.settings.get("quest-manager", "autoSave")) {
           await window.questManager.save();
         }
-        
+        -
         // Émettre l'événement socket
         window.questManagerSocket.emit(SOCKET_EVENTS.QUEST_UPDATED, {
           questId: quest.id,
@@ -306,10 +318,13 @@ export class QuestCRUD {
           }
         });
         
+        // **NOUVEAU: Notification**
+        window.questNotifications.notifyRewardsDistributed(quest, actor, result.items);
+        
         console.log(`Quest Manager | Récompenses distribuées pour: ${quest.id}`);
       }
       
-      return success;
+      return result.success;
       
     } catch (error) {
       console.error("Quest Manager | Erreur lors de la distribution des récompenses:", error);

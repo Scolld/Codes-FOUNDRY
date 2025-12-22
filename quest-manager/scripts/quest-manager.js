@@ -7,6 +7,7 @@ import { StorageManager } from './utils/storage.js';
 import { QuestTree } from './models/quest-tree.js';
 import { PermissionManager } from './utils/permissions.js';
 import { SocketManager } from './utils/socket.js';
+import { NotificationManager } from './utils/notifications.js';
 
 // Namespace global pour le module
 class QuestManager {
@@ -24,7 +25,8 @@ class QuestManager {
     
     // Enregistrer les settings
     StorageManager.registerSettings();
-
+    
+    // **Initialiser le socket si pas encore fait**
     if (!window.questManagerSocket.initialized) {
       window.questManagerSocket.initialize();
     }
@@ -137,8 +139,10 @@ class QuestManager {
   }
 }
 
-// Instance globale
+// **Instances globales**
 window.questManager = new QuestManager();
+window.questManagerSocket = new SocketManager();
+window.questNotifications = new NotificationManager();
 
 // ============================================================================
 // HOOKS FOUNDRY
@@ -204,6 +208,15 @@ Hooks.once('init', () => {
     type: Boolean,
     default: true
   });
+  
+  // **NOUVEAU: Setting pour les achievements**
+  game.settings.register("quest-manager", "unlockedAchievements", {
+    name: "Unlocked Achievements",
+    scope: "world",
+    config: false,
+    type: Array,
+    default: []
+  });
 });
 
 /**
@@ -215,10 +228,14 @@ Hooks.once('ready', async () => {
   // Initialiser le module
   await window.questManager.initialize();
   
+  // **Initialiser le système de notifications**
+  window.questNotifications.initialize();
+  
+  // **Les joueurs demandent une sync au démarrage**
   if (!game.user.isGM) {
     setTimeout(() => {
       window.questManagerSocket.requestSync();
-    }, 2000); // Attendre 2 secondes pour que tout soit bien initialisé
+    }, 2000);
   }
   
   // Configurer la sauvegarde automatique par intervalle
@@ -239,7 +256,17 @@ Hooks.once('ready', async () => {
 });
 
 /**
- * Macro globale pour ouvrir le gestionnaire de quêtes
+ * Hook : Avant la fermeture du navigateur
+ */
+Hooks.on('closeApplication', async (app) => {
+  // Sauvegarder avant la fermeture
+  if (window.questManager.initialized) {
+    await window.questManager.save();
+  }
+});
+
+/**
+ * Hook : Ajout des contrôles de scène
  */
 Hooks.on('getSceneControlButtons', (controls) => {
   // Ajouter un bouton dans la barre d'outils
@@ -266,15 +293,33 @@ Hooks.on('getSceneControlButtons', (controls) => {
   });
 });
 
-// Alternative: Ajouter dans le menu des acteurs/items
+/**
+ * Hook : Ajout dans la sidebar
+ */
 Hooks.on('renderSidebarTab', (app, html) => {
   if (app.tabName === "chat") {
     // Ajouter un bouton dans le chat
     const button = $(`
-      <button class="quest-manager-btn">
-        <i class="fas fa-book-open"></i> Quêtes
+      <button class="quest-manager-btn" style="
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s;
+      ">
+        <i class="fas fa-book-open"></i> Gestionnaire de Quêtes
       </button>
     `);
+    
+    button.hover(
+      function() { $(this).css('transform', 'translateY(-2px)'); },
+      function() { $(this).css('transform', 'translateY(0)'); }
+    );
     
     button.click(() => {
       import('./apps/quest-manager-app.js').then(module => {
@@ -283,15 +328,5 @@ Hooks.on('renderSidebarTab', (app, html) => {
     });
     
     html.find('.directory-footer').append(button);
-  }
-});
-
-/**
- * Hook : Avant la fermeture du navigateur
- */
-Hooks.on('closeApplication', async (app) => {
-  // Sauvegarder avant la fermeture
-  if (window.questManager.initialized) {
-    await window.questManager.save();
   }
 });
