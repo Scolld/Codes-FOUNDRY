@@ -1,0 +1,535 @@
+/* ==========================================================================
+   Quest Manager - Styles principaux
+   ========================================================================== */
+
+/* Variables CSS */
+:root {
+  --quest-color-known: #4a90e2;
+  --quest-color-active: #f5a623;
+  --quest-color-completed: #7ed321;
+  --quest-bg-hover: #f5f5f5;
+  --quest-border: #ddd;
+  --quest-spacing: 0.5rem;
+}
+
+/* Container principal */
+.quest-manager {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.quest-manager-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+}
+
+/* En-tête */
+.quest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--quest-border);
+}
+
+.quest-stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.quest-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: #f8f8f8;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.quest-stats .stat.active { color: var(--quest-color-active); font-weight: bold; }
+.quest-stats .stat.known { color: var(--quest-color-known); }
+.quest-stats .stat.completed { color: var(--quest-color-completed); }
+
+.quest-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  padding: 0.4rem 0.8rem;
+  background: #2c3e50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-btn:hover {
+  background: #34495e;
+}
+
+/* Filtres */
+.quest-filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background: #f8f8f8;
+  border-radius: 4px;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 0.5rem 2rem 0.5rem 0.5rem;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+}
+
+.search-box .clear-btn {
+  position: absolute;
+  right: 0.3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+}
+
+/* Onglets */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--quest-border);
+}
+
+.tab-button {
+  padding: 0.6rem 1.2rem;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  background: var(--quest-bg-hover);
+}
+
+.tab-button.active {
+  border-bottom-color: var(--quest-color-active);
+  font-weight: bold;
+}
+
+/* Contenu des onglets */
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+/* Vue Arbre - Sections */
+.quest-section {
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: #f0f0f0;
+  border-left: 4px solid var(--quest-color-known);
+  font-size: 1.1rem;
+}
+
+.active-section .section-title {
+  border-left-color: var(--quest-color-active);
+}
+
+.completed-section .section-title {
+  border-left-color: var(--quest-color-completed);
+  opacity: 0.7;
+}
+
+/* Liste de quêtes */
+.quest-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.quest-item {
+  margin-bottom: 0.3rem;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.quest-item:hover {
+  background: var(--quest-bg-hover);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.quest-item.dragging {
+  opacity: 0.5;
+}
+
+.quest-item.drag-over {
+  border-color: var(--quest-color-active);
+  background: #fff8e1;
+}
+
+.quest-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem;
+}
+
+.quest-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.quest-spacer {
+  width: 1.5rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.quest-title {
+  flex: 1;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.quest-title:hover {
+  text-decoration: underline;
+}
+
+.quest-item.terminee .quest-title {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.quest-actions-inline {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.quest-status-change {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.action-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.3rem;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.action-icon:hover {
+  color: #000;
+}
+
+.quest-delete:hover {
+  color: #e74c3c;
+}
+
+/* Sous-quêtes */
+.quest-children {
+  list-style: none;
+  padding-left: 2rem;
+  margin: 0.5rem 0 0 0;
+  border-left: 2px solid var(--quest-border);
+}
+
+/* État vide */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: #999;
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.3;
+}
+
+/* Vue Graphe */
+#graph-container {
+  width: 100%;
+  height: 500px;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+}
+
+.graph-legend {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f8f8;
+  border-radius: 4px;
+}
+
+.graph-legend ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.graph-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+
+.legend-line {
+  width: 30px;
+  height: 2px;
+  background: #333;
+}
+
+.legend-line.dashed {
+  background: repeating-linear-gradient(
+    to right,
+    #e74c3c 0,
+    #e74c3c 5px,
+    transparent 5px,
+    transparent 10px
+  );
+}
+
+.legend-line.dotted {
+  background: repeating-linear-gradient(
+    to right,
+    #95a5a6 0,
+    #95a5a6 2px,
+    transparent 2px,
+    transparent 6px
+  );
+}
+
+/* ==========================================================================
+   Quest Form - Styles du formulaire
+   ========================================================================== */
+
+.quest-form {
+  max-height: 80vh;
+}
+
+.quest-form-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.quest-form .tabs {
+  flex-shrink: 0;
+}
+
+.quest-form .tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.quest-form .tab {
+  display: none;
+}
+
+.quest-form .tab.active {
+  display: block;
+}
+
+/* Groupes de formulaire */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-group .required {
+  color: #e74c3c;
+}
+
+.form-group .hint {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.3rem;
+}
+
+.form-group .editor-hint {
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: #666;
+  margin-left: 0.5rem;
+}
+
+.form-group input[type="text"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+.form-group input.invalid {
+  border-color: #e74c3c;
+}
+
+.form-group textarea.editor {
+  min-height: 200px;
+  font-family: monospace;
+}
+
+/* Gestionnaire de relations */
+.relation-manager {
+  padding: 0.5rem;
+  background: #f8f8f8;
+  border-radius: 4px;
+}
+
+.relation-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.relation-select {
+  flex: 1;
+}
+
+.add-relation-btn {
+  padding: 0.5rem 1rem;
+  background: var(--quest-color-active);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.add-relation-btn:hover {
+  background: #e69500;
+}
+
+.relation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.relation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 0.3rem;
+  background: white;
+  border: 1px solid var(--quest-border);
+  border-radius: 4px;
+}
+
+.relation-item .remove-relation {
+  background: none;
+  border: none;
+  color: #e74c3c;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+}
+
+/* Footer du formulaire */
+.form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-top: 1px solid var(--quest-border);
+  background: #f8f8f8;
+}
+
+.cancel-btn,
+.submit-btn {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cancel-btn {
+  background: #95a5a6;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background: #7f8c8d;
+}
+
+.submit-btn {
+  background: var(--quest-color-active);
+  color: white;
+}
+
+.submit-btn:hover {
+  background: #e69500;
+}
+
+.submit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
